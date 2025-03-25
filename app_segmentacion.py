@@ -125,65 +125,65 @@ with st.sidebar:
     st.header("✏️ **Editor de Grupos**")
     
     # Inicializar grupos con los valores predeterminados solicitados
-if 'grupos' not in st.session_state:
-    st.session_state.grupos = [
-        {
-            'nombre': "1 día antes",
-            'resoluciones': [
-                "Se brinda información",
-                "Se brinda información Whatsapp",
-                "Volver a llamar"
-            ],
-            'dias_antes': 1,
-            'filtro_fecha': True,
-            'activo': True
-        },
-        {
-            'nombre': "2 días antes - Positivos",
-            'resoluciones': [
-                "Analizando propuesta",
-                "Oportunidad de venta",
-                "En proceso de pago"
-            ],
-            'dias_antes': 2,
-            'filtro_fecha': True,
-            'activo': True
-        },
-        {
-            'nombre': "2 días antes - Negativos",
-            'resoluciones': [
-                "Le parece caro",
-                "Siguiente cohorte",
-                "Motivos personales",
-                "No es la oferta buscada"
-            ],
-            'dias_antes': 2,
-            'filtro_fecha': True,
-            'activo': True
-        },
-        {
-            'nombre': "Sin filtro de fecha",
-            'resoluciones': [
-                "No contesta",
-                "NotProcessed"
-            ],
-            'dias_antes': None,
-            'filtro_fecha': False,
-            'activo': True
-        },
-        {
-            'nombre': "1 día antes y día actual - Especiales",
-            'resoluciones': [
-                "Spam - Desconoce haber solicitado informacion",
-                "Telefono erroneo o fuera de servicio",
-                "Pide no ser llamado",
-                "Imposible contactar"
-            ],
-            'dias_antes': [0, 1],  # 0 es el día actual, 1 es un día antes
-            'filtro_fecha': True,
-            'activo': True
-        }
-    ]
+    if 'grupos' not in st.session_state:
+        st.session_state.grupos = [
+            {
+                'nombre': "1 día antes",
+                'resoluciones': [
+                    "Se brinda información",
+                    "Se brinda información Whatsapp",
+                    "Volver a llamar"
+                ],
+                'dias_antes': 1,
+                'filtro_fecha': True,
+                'activo': True
+            },
+            {
+                'nombre': "2 días antes - Positivos",
+                'resoluciones': [
+                    "Analizando propuesta",
+                    "Oportunidad de venta",
+                    "En proceso de pago"
+                ],
+                'dias_antes': 2,
+                'filtro_fecha': True,
+                'activo': True
+            },
+            {
+                'nombre': "2 días antes - Negativos",
+                'resoluciones': [
+                    "Le parece caro",
+                    "Siguiente cohorte",
+                    "Motivos personales",
+                    "No es la oferta buscada"
+                ],
+                'dias_antes': 2,
+                'filtro_fecha': True,
+                'activo': True
+            },
+            {
+                'nombre': "Sin filtro de fecha",
+                'resoluciones': [
+                    "No contesta",
+                    "NotProcessed"
+                ],
+                'dias_antes': None,
+                'filtro_fecha': False,
+                'activo': True
+            },
+            {
+                'nombre': "1 día antes y día actual - Especiales",
+                'resoluciones': [
+                    "Spam - Desconoce haber solicitado informacion",
+                    "Telefono erroneo o fuera de servicio",
+                    "Pide no ser llamado",
+                    "Imposible contactar"
+                ],
+                'dias_antes': [0, 1],  # 0 es el día actual, 1 es un día antes
+                'filtro_fecha': True,
+                'activo': True
+            }
+        ]
     
     # Botón para añadir grupo
     if st.button("➕ Añadir Grupo", use_container_width=True):
