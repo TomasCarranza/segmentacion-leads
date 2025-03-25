@@ -18,10 +18,10 @@ st.set_page_config(
 )
 
 # Título principal con estilo mejorado
-st.title("📊 **Segmentación de Leads con Configuración Flexible**")
+st.title("📊 **Segmentación de Leads**")
 st.markdown("""
-    *Personaliza completamente los grupos y criterios de segmentación antes de procesar.*  
-    **↓ Configura todo en la barra lateral ↓**
+    *Personaliza los grupos y criterios de segmentación antes de procesar.*  
+    **👈 Configura todo en la barra lateral ↓**
 """)
 
 # ====================
@@ -80,7 +80,7 @@ with st.sidebar:
     with st.expander("🔧 **Opciones Generales**", expanded=True):
         eliminar_duplicados = st.checkbox(
             "Eliminar duplicados (por teléfono)",
-            value=True,
+            value=False,
             help="Si está activado, elimina registros con el mismo número telefónico."
         )
         
@@ -311,7 +311,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
 # ====================
 with st.expander("📚 **Guía Completa de Uso**", expanded=False):
     st.markdown("""
-    ### 🎯 **Cómo usar esta herramienta**
+    ### 🎯 **Cómo usar la herramienta**
     1. **Configura los grupos** en la barra lateral:
        - ✏️ Edita nombres, resoluciones y días
        - ➕/❌ Añade o elimina grupos
@@ -321,7 +321,7 @@ with st.expander("📚 **Guía Completa de Uso**", expanded=False):
 
     ### ⚡ **Consejos avanzados**
     - Para **múltiples fechas**: Activa "Usar múltiples días" en un grupo
-    - **Resoluciones**: Escribe exactamente como aparecen en tus datos
+    - **Resoluciones**: Escribe exactamente como aparece en el Excel
     - **Eliminar duplicados**: Recomendado para evitar registros repetidos
     """)
 
