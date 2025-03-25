@@ -2,21 +2,19 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import os
-import zipfile
 import tempfile
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Segmentación Avanzada de Leads",
+    page_title="Segmentación de Leads",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # Título de la aplicación
-st.title("🎚️ Segmentación Avanzada de Leads")
+st.title("📊 Segmentación de Leads")
 st.markdown("""
-**Configura tus parámetros de segmentación y procesa los archivos Excel automáticamente.**
+**Carga tus archivos Excel y descarga los reportes segmentados individualmente.**
 """)
 
 # Función para limpiar datos
@@ -27,92 +25,6 @@ def limpiar_telefono(numero):
     if pd.isna(numero): return ''
     return ''.join(filter(str.isdigit, str(numero)))
 
-# Inicializar parámetros en session state
-if 'grupos' not in st.session_state:
-    st.session_state.grupos = [
-        {
-            'nombre': "Se brinda información",
-            'resoluciones': ["Se brinda información", "Se brinda información Whatsapp", "Volver a llamar"],
-            'dias_antes': 1,
-            'activo': True
-        },
-        {
-            'nombre': "Analizando propuesta",
-            'resoluciones': ["Analizando propuesta", "Oportunidad de venta", "En proceso de pago"],
-            'dias_antes': 2,
-            'activo': True
-        },
-        {
-            'nombre': "Le parece caro",
-            'resoluciones': ["Le parece caro", "Siguiente cohorte", "Motivos personales", "No es la oferta buscada"],
-            'dias_antes': 2,
-            'activo': True
-        },
-        {
-            'nombre': "No contesta",
-            'resoluciones': ["No contesta", "NotProcessed"],
-            'dias_antes': None,
-            'activo': True
-        },
-        {
-            'nombre': "Spam",
-            'resoluciones': ["Spam - Desconoce haber solicitado informacion", "Telefono erroneo o fuera de servicio", "Pide no ser llamado", "Imposible contactar"],
-            'dias_antes': [0, 1],
-            'activo': True
-        }
-    ]
-
-# Sidebar para configuración
-with st.sidebar:
-    st.header("⚙️ Configuración Global")
-    fecha_referencia = st.date_input("Fecha de referencia para segmentación", datetime.now())
-    
-    st.header("🔧 Configurar Grupos")
-    
-    # Botón para añadir nuevo grupo
-    if st.button("➕ Añadir nuevo grupo"):
-        st.session_state.grupos.append({
-            'nombre': "Nuevo grupo",
-            'resoluciones': [],
-            'dias_antes': 1,
-            'activo': True
-        })
-    
-    # Editar grupos existentes
-    for i, grupo in enumerate(st.session_state.grupos):
-        with st.expander(f"Grupo: {grupo['nombre']}", expanded=True):
-            grupo['activo'] = st.checkbox("Activo", value=grupo['activo'], key=f"activo_{i}")
-            grupo['nombre'] = st.text_input("Nombre", value=grupo['nombre'], key=f"nombre_{i}")
-            
-            # Configurar días antes
-            if isinstance(grupo['dias_antes'], list):
-                grupo['dias_antes'] = st.multiselect(
-                    "Días a incluir",
-                    options=[0, 1, 2, 3, 4, 5],
-                    default=grupo['dias_antes'],
-                    key=f"dias_{i}"
-                )
-            elif grupo['dias_antes'] is not None:
-                grupo['dias_antes'] = st.number_input(
-                    "Días antes",
-                    min_value=0,
-                    value=grupo['dias_antes'],
-                    key=f"dias_{i}"
-                )
-            else:
-                st.info("Este grupo incluye todos los registros sin filtrar por fecha")
-            
-            grupo['resoluciones'] = st.text_area(
-                "Resoluciones (una por línea)",
-                value="\n".join(grupo['resoluciones']),
-                key=f"res_{i}"
-            ).split("\n")
-            
-            # Botón para eliminar grupo
-            if st.button(f"❌ Eliminar este grupo", key=f"del_{i}"):
-                st.session_state.grupos.pop(i)
-                st.rerun()
-
 # Widget para subir archivos
 uploaded_files = st.file_uploader(
     "Sube tus archivos Excel (puedes seleccionar varios)",
@@ -120,11 +32,39 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True
 )
 
-# Procesar archivos
-if uploaded_files and st.button("🚀 Ejecutar Segmentación", type="primary"):
+# Definición de grupos
+grupos = [
+    {
+        'nombre': "Se brinda información",
+        'resoluciones': ["Se brinda información", "Se brinda información Whatsapp", "Volver a llamar"],
+        'dias_antes': 1
+    },
+    {
+        'nombre': "Analizando propuesta",
+        'resoluciones': ["Analizando propuesta", "Oportunidad de venta", "En proceso de pago"],
+        'dias_antes': 2
+    },
+    {
+        'nombre': "Le parece caro",
+        'resoluciones': ["Le parece caro", "Siguiente cohorte", "Motivos personales", "No es la oferta buscada"],
+        'dias_antes': 2
+    },
+    {
+        'nombre': "No contesta",
+        'resoluciones': ["No contesta", "NotProcessed"],
+        'dias_antes': None
+    },
+    {
+        'nombre': "Spam",
+        'resoluciones': ["Spam - Desconoce haber solicitado informacion", "Telefono erroneo o fuera de servicio", "Pide no ser llamado", "Imposible contactar"],
+        'dias_antes': [0, 1]
+    }
+]
+
+if uploaded_files and st.button("🚀 Ejecutar Segmentación"):
     with st.spinner("Procesando archivos..."):
         try:
-            # Leer todos los archivos
+            # Leer todos los archivos subidos
             dfs = []
             for uploaded_file in uploaded_files:
                 with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -156,20 +96,20 @@ if uploaded_files and st.button("🚀 Ejecutar Segmentación", type="primary"):
                 st.warning(f"Se descartaron {registros_invalidos} registros con fechas inválidas")
                 df_unificado = df_unificado.dropna(subset=['Fecha_Lead'])
             
-            # Procesar cada grupo activo
-            os.makedirs("resultados", exist_ok=True)
-            resultados_generados = []
+            hoy = datetime.now().date()
+            resultados = []
             
-            for grupo in [g for g in st.session_state.grupos if g['activo']]:
+            # Procesar cada grupo
+            for grupo in grupos:
                 df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
                 
                 # Filtrar por fecha
                 if grupo['dias_antes'] is not None:
                     if isinstance(grupo['dias_antes'], list):
-                        fechas = [fecha_referencia - timedelta(days=d) for d in grupo['dias_antes']]
+                        fechas = [hoy - timedelta(days=d) for d in grupo['dias_antes']]
                         df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].isin(fechas)]
                     else:
-                        fecha_objetivo = fecha_referencia - timedelta(days=grupo['dias_antes'])
+                        fecha_objetivo = hoy - timedelta(days=grupo['dias_antes'])
                         df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'] == fecha_objetivo]
                 
                 if not df_filtrado.empty:
@@ -181,59 +121,47 @@ if uploaded_files and st.button("🚀 Ejecutar Segmentación", type="primary"):
                         'Fecha Insert Lead': 'Fecha_Contacto'
                     })
                     
-                    # Guardar archivo
-                    nombre_archivo = f"resultados/{grupo['nombre']} {fecha_referencia.strftime('%d-%m')}.xlsx"
-                    resultado.to_excel(nombre_archivo, index=False)
-                    resultados_generados.append(nombre_archivo)
+                    resultados.append({
+                        'nombre': grupo['nombre'],
+                        'data': resultado,
+                        'filename': f"{grupo['nombre']} {hoy.strftime('%d-%m')}.xlsx"
+                    })
             
-            # Crear ZIP con resultados
-            if resultados_generados:
-                with zipfile.ZipFile("resultados.zip", "w") as zipf:
-                    for archivo in resultados_generados:
-                        zipf.write(archivo)
-                
-                # Mostrar resultados
+            # Mostrar resultados para descarga individual
+            if resultados:
                 st.success("✅ Procesamiento completado!")
-                st.download_button(
-                    label="📦 Descargar todos los resultados",
-                    data=open("resultados.zip", "rb").read(),
-                    file_name="resultados_segmentacion.zip",
-                    mime="application/zip"
-                )
+                st.subheader("📥 Descargar archivos individuales")
                 
-                # Mostrar resumen
-                st.subheader("Resumen de ejecución")
-                col1, col2 = st.columns(2)
-                col1.metric("Registros procesados", len(df_unificado))
-                col2.metric("Archivos generados", len(resultados_generados))
-                
-                # Limpiar archivos temporales
-                for archivo in resultados_generados:
-                    os.unlink(archivo)
-                os.unlink("resultados.zip")
+                for resultado in resultados:
+                    with st.expander(resultado['nombre']):
+                        st.dataframe(resultado['data'].head(3))
+                        
+                        # Convertir DataFrame a Excel en memoria
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            resultado['data'].to_excel(writer, index=False)
+                        excel_data = output.getvalue()
+                        
+                        st.download_button(
+                            label=f"Descargar {resultado['nombre']}",
+                            data=excel_data,
+                            file_name=resultado['filename'],
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
             else:
                 st.info("No se generaron archivos (ningún grupo produjo resultados)")
                 
         except Exception as e:
             st.error(f"❌ Error en el procesamiento: {str(e)}")
-            st.exception(e)
 
 # Instrucciones
-with st.expander("📌 Instrucciones de uso", expanded=True):
+with st.expander("ℹ️ Instrucciones de uso"):
     st.markdown("""
-    1. **Configura los grupos** en el panel lateral (puedes añadir/eliminar/modificar)
-    2. **Sube tus archivos Excel** (pueden ser varios)
-    3. Haz clic en **Ejecutar Segmentación**
-    4. **Descarga los resultados** en formato ZIP
+    1. **Sube tus archivos Excel** (pueden ser varios)
+    2. Haz clic en **Ejecutar Segmentación**
+    3. **Descarga los resultados** individualmente desde cada sección
     
-    Características:
-    - Configuración personalizable de grupos
-    - Filtrado flexible por fechas
-    - Limpieza automática de datos
-    - Soporte para múltiples archivos de entrada
+    Los archivos generados seguirán el formato:
+    - `[Nombre del grupo] [fecha actual].xlsx`
+    - Ejemplo: `Se brinda información 25-07.xlsx`
     """)
-
-# Notas
-st.caption("""
-*Nota: Los archivos se procesan en memoria y no se almacenan en el servidor después de la descarga.*
-""")
