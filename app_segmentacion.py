@@ -10,17 +10,17 @@ import time
 # CONFIGURACIÓN INICIAL
 # ====================
 st.set_page_config(
-    page_title="🚀 Segmentación Avanzada de Leads",
+    page_title="Segmentación de Leads",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # Título principal con estilo mejorado
-st.title("📊 **Segmentación de Leads Avanzada**")
+st.title("📊 **Segmentación de Leads**")
 st.markdown("""
     *Personaliza completamente los grupos y criterios de segmentación.*  
-    **👈 Configura todo en la barra lateral** → Descarga reportes personalizados ↓
+    **👈 Configura todo en la barra lateral.** Descarga reportes personalizados ↓
 """)
 
 # ====================
@@ -44,10 +44,7 @@ def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
             
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
                 tmp.write(uploaded_file.getvalue())
-                df = pd.read_excel(tmp.name, engine=engine, usecols=[
-                    'Nombre', 'teltelefono', 'emlMail', 'Carrera Interes', 
-                    'Resolución', 'Fecha Insert Lead', 'TelWhatsapp'
-                ])
+                df = pd.read_excel(tmp.name, engine=engine)
                 dfs.append(df)
             os.unlink(tmp.name)
         except Exception as e:
@@ -58,6 +55,18 @@ def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
 # INTERFAZ DE CONFIGURACIÓN (Mejorada)
 # ====================
 with st.sidebar:
+    # Configuración del ancho de la barra lateral
+    st.markdown(
+        """
+        <style>
+            section[data-testid="stSidebar"] {
+                width: 40% !important;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    
     st.header("⚙️ **Configuración Avanzada**")
     
     # 1. Selector de fecha de referencia
@@ -71,7 +80,7 @@ with st.sidebar:
     with st.expander("🔧 **Opciones Generales**", expanded=True):
         eliminar_duplicados = st.checkbox(
             "Eliminar duplicados (por teléfono)",
-            value=True,
+            value=False, 
             help="Elimina registros con el mismo número telefónico"
         )
         
@@ -81,7 +90,20 @@ with st.sidebar:
             help="Muestra las primeras filas de cada grupo"
         )
     
-    # 3. Editor completo de grupos
+    # 3. Columnas a incluir
+    st.header("📋 **Columnas a Incluir**")
+    columnas_disponibles = [
+        'Nombre', 'teltelefono', 'emlMail', 'Carrera Interes',
+        'Resolución', 'Fecha Insert Lead', 'TelWhatsapp'
+    ]
+    columnas_seleccionadas = st.multiselect(
+        "Selecciona las columnas para el reporte final",
+        options=columnas_disponibles,
+        default=columnas_disponibles,  # Todas seleccionadas por defecto
+        help="Elige qué columnas incluir en los archivos de salida"
+    )
+    
+    # 4. Editor completo de grupos
     st.header("✏️ **Editor de Grupos**")
     
     # Inicializar grupos si no existen
@@ -98,7 +120,7 @@ with st.sidebar:
                 'nombre': "No contesta",
                 'resoluciones': ["No contesta", "NotProcessed"],
                 'dias_antes': None,
-                'filtro_fecha': False,  # Filtro desactivado por defecto para este grupo
+                'filtro_fecha': False,
                 'activo': True
             }
         ]
@@ -114,33 +136,32 @@ with st.sidebar:
         })
     
     # Editor dinámico de grupos
-    for i, grupo in enumerate(st.session_state.grupos[:]):  # Usamos copia para evitar modificación durante iteración
-        with st.expander(f"**{grupo['nombre']}** {'✅' if grupo['activo'] else '❌'}", expanded=True):
-            cols = st.columns([4, 1])
-            grupo['nombre'] = cols[0].text_input(
+    for i, grupo in enumerate(st.session_state.grupos[:]):
+        with st.expander(f"**{grupo['nombre']}**", expanded=True):
+            grupo['nombre'] = st.text_input(
                 "Nombre del grupo",
                 value=grupo['nombre'],
                 key=f"nombre_{i}"
             )
-            grupo['activo'] = cols[1].checkbox(
+            
+            grupo['activo'] = st.checkbox(
                 "Activo",
                 value=grupo['activo'],
                 key=f"activo_{i}"
             )
             
-            # Nuevo: Checkbox para activar/desactivar filtro por fecha
+            # Checkbox para activar/desactivar filtro por fecha
             grupo['filtro_fecha'] = st.checkbox(
                 "Filtrar por fecha",
                 value=grupo.get('filtro_fecha', True),
-                key=f"filtro_fecha_{i}",
-                help="Desactivar para incluir todos los registros sin filtrar por fecha"
+                key=f"filtro_fecha_{i}"
             )
             
             if grupo['filtro_fecha']:
                 if st.checkbox("Usar múltiples días", value=isinstance(grupo['dias_antes'], list), key=f"multidias_{i}"):
                     grupo['dias_antes'] = st.multiselect(
                         "Días a incluir",
-                        options=list(range(8)),  # 0 a 7 días
+                        options=list(range(8)),
                         default=grupo['dias_antes'] if isinstance(grupo['dias_antes'], list) else [1],
                         key=f"dias_ms_{i}"
                     )
@@ -154,7 +175,7 @@ with st.sidebar:
             else:
                 grupo['dias_antes'] = None
             
-            # Editor de resoluciones mejorado
+            # Editor de resoluciones
             st.markdown("**Resoluciones a incluir:**")
             grupo['resoluciones'] = st.text_area(
                 "Una por línea",
@@ -193,24 +214,34 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 st.error("❌ No se encontraron datos válidos")
                 st.stop()
             
+            # Verificar columnas seleccionadas
+            columnas_faltantes = [col for col in columnas_seleccionadas if col not in df_unificado.columns]
+            if columnas_faltantes:
+                st.error(f"❌ Columnas no encontradas: {', '.join(columnas_faltantes)}")
+                st.stop()
+            
             # Etapa 2: Limpieza de datos
             status_text.info("🧹 Limpiando datos...")
-            df_unificado['Nombre'] = df_unificado['Nombre'].apply(limpiar_nombre)
-            df_unificado['teltelefono'] = df_unificado['teltelefono'].apply(limpiar_telefono)
-            df_unificado['TelWhatsapp'] = df_unificado['TelWhatsapp'].apply(limpiar_telefono)
+            if 'Nombre' in columnas_seleccionadas:
+                df_unificado['Nombre'] = df_unificado['Nombre'].apply(limpiar_nombre)
+            if 'teltelefono' in columnas_seleccionadas:
+                df_unificado['teltelefono'] = df_unificado['teltelefono'].apply(limpiar_telefono)
+            if 'TelWhatsapp' in columnas_seleccionadas:
+                df_unificado['TelWhatsapp'] = df_unificado['TelWhatsapp'].apply(limpiar_telefono)
             
             # Etapa 3: Procesamiento de fechas
-            df_unificado['Fecha_Lead'] = pd.to_datetime(
-                df_unificado['Fecha Insert Lead'], 
-                format='%d-%m-%Y %H:%M:%S',
-                errors='coerce'
-            ).dt.date
-            
-            # Filtrar inválidos
-            n_invalidos = df_unificado['Fecha_Lead'].isna().sum()
-            if n_invalidos > 0:
-                st.warning(f"⚠️ Se omitieron {n_invalidos} registros con fechas inválidas")
-                df_unificado = df_unificado.dropna(subset=['Fecha_Lead'])
+            if 'Fecha Insert Lead' in columnas_seleccionadas:
+                df_unificado['Fecha_Lead'] = pd.to_datetime(
+                    df_unificado['Fecha Insert Lead'], 
+                    format='%d-%m-%Y %H:%M:%S',
+                    errors='coerce'
+                ).dt.date
+                
+                # Filtrar inválidos
+                n_invalidos = df_unificado['Fecha_Lead'].isna().sum()
+                if n_invalidos > 0:
+                    st.warning(f"⚠️ Se omitieron {n_invalidos} registros con fechas no reconocidas")
+                    df_unificado = df_unificado.dropna(subset=['Fecha_Lead'])
             
             progress_bar.progress(40)
             
@@ -225,7 +256,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
                 
                 # Filtrar por fecha si está activado
-                if grupo['filtro_fecha'] and grupo['dias_antes'] is not None:
+                if grupo['filtro_fecha'] and grupo['dias_antes'] is not None and 'Fecha_Lead' in df_unificado.columns:
                     if isinstance(grupo['dias_antes'], list):
                         fechas = [fecha_referencia - timedelta(days=d) for d in grupo['dias_antes']]
                         df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].isin(fechas)]
@@ -234,18 +265,25 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                         df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'] == fecha_objetivo]
                 
                 if not df_filtrado.empty:
-                    if eliminar_duplicados:
+                    if eliminar_duplicados and 'teltelefono' in df_filtrado.columns:
                         df_filtrado = df_filtrado.drop_duplicates(subset=['teltelefono'])
+                    
+                    # Seleccionar solo las columnas elegidas
+                    df_final = df_filtrado[columnas_seleccionadas].copy()
+                    
+                    # Renombrar columnas para el output
+                    mapeo_nombres = {
+                        'teltelefono': 'Telefono',
+                        'emlMail': 'Email',
+                        'Carrera Interes': 'Programa',
+                        'TelWhatsapp': 'Whatsapp',
+                        'Fecha Insert Lead': 'Fecha_Contacto'
+                    }
+                    df_final = df_final.rename(columns={k: v for k, v in mapeo_nombres.items() if k in df_final.columns})
                     
                     resultados.append({
                         'nombre': grupo['nombre'],
-                        'data': df_filtrado.rename(columns={
-                            'teltelefono': 'Telefono',
-                            'emlMail': 'Email',
-                            'Carrera Interes': 'Programa',
-                            'TelWhatsapp': 'Whatsapp',
-                            'Fecha Insert Lead': 'Fecha_Contacto'
-                        }),
+                        'data': df_final,
                         'registros': len(df_filtrado),
                         'filename': f"{grupo['nombre']} {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                     })
@@ -308,22 +346,23 @@ with st.expander("📚 **Guía Completa**", expanded=False):
     st.markdown("""
     ### 🎯 **Cómo usar esta herramienta**
     1. **Configura los grupos** en la barra lateral
-    2. **Sube tus archivos Excel** (.xls o .xlsx)
-    3. **Ejecuta la segmentación**
-    4. **Descarga los reportes** individuales
+    2. **Selecciona las columnas** a incluir
+    3. **Sube tus archivos Excel** (.xls o .xlsx)
+    4. **Ejecuta la segmentación**
+    5. **Descarga los reportes** individuales
 
     ### ⚙️ **Funcionalidades clave**
-    - **Filtro de fecha flexible**: Activa/desactiva por grupo
-    - **Múltiples días**: Selecciona varios días de diferencia
-    - **Eliminar duplicados**: Por número telefónico
+    - **Selección de columnas**: Elige qué datos incluir
+    - **Filtro flexible**: Activa/desactiva por grupo
     - **Vista previa**: Antes de descargar
+    - **Eliminar duplicados**: Opcional por teléfono
 
     ### 💡 **Consejos**
     - Para grupos como "No contesta", desactiva el filtro por fecha
-    - Usa "Eliminar duplicados" para datos más limpios
+    - Revisa las columnas disponibles en tus archivos
     """)
 
 # Créditos
 st.caption("""
-    *Sistema de segmentación automatizada | v2.1 | {date}*
+    *Sistema de segmentación automatizada | v2.2 | {date}*
 """.format(date=datetime.now().strftime("%d/%m/%Y")))
