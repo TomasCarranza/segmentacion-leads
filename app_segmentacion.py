@@ -16,18 +16,30 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Título principal con estilo mejorado
+# Estilo para la barra lateral al 40%
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 40% !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# Título principal
 st.title("📊 **Segmentación de Leads**")
 st.markdown("""
     *Personaliza completamente los grupos y criterios de segmentación.*  
-    **👈 Configura todo en la barra lateral.** Descarga reportes personalizados ↓
+    **👈 Configura todo en la barra lateral**
 """)
 
 # ====================
-# FUNCIONES PRINCIPALES (Optimizadas)
+# FUNCIONES PRINCIPALES
 # ====================
 def limpiar_nombre(nombre: str) -> str:
-    """Limpia y formatea el nombre (primera palabra, formato título)."""
+    """Limpia y formatea el nombre."""
     return str(nombre).split()[0].lower().capitalize() if pd.notna(nombre) else ''
 
 def limpiar_telefono(numero: str) -> str:
@@ -35,7 +47,7 @@ def limpiar_telefono(numero: str) -> str:
     return ''.join(filter(str.isdigit, str(numero))) if pd.notna(numero) else ''
 
 def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
-    """Carga y concatena archivos Excel con manejo robusto de formatos."""
+    """Carga y concatena archivos Excel."""
     dfs = []
     for uploaded_file in uploaded_files:
         try:
@@ -52,61 +64,33 @@ def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
 # ====================
-# INTERFAZ DE CONFIGURACIÓN (Mejorada)
+# INTERFAZ DE USUARIO
 # ====================
 with st.sidebar:
-    # Configuración del ancho de la barra lateral
-    st.markdown(
-        """
-        <style>
-            section[data-testid="stSidebar"] {
-                width: 40% !important;
-            }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.header("⚙️ **Configuración**")
     
-    st.header("⚙️ **Configuración Avanzada**")
-    
-    # 1. Selector de fecha de referencia
+    # 1. Fecha de referencia
     fecha_referencia = st.date_input(
         "📅 Fecha base para segmentación",
-        datetime.now(),
-        help="Fecha de referencia para calcular los días de filtrado"
+        datetime.now()
     )
     
-    # 2. Configuración global
+    # 2. Opciones generales
     with st.expander("🔧 **Opciones Generales**", expanded=True):
         eliminar_duplicados = st.checkbox(
             "Eliminar duplicados (por teléfono)",
-            value=False, 
-            help="Elimina registros con el mismo número telefónico"
+            value=False
         )
         
         mostrar_vista_previa = st.checkbox(
             "Mostrar vista previa",
-            value=True,
-            help="Muestra las primeras filas de cada grupo"
+            value=True
         )
     
-    # 3. Columnas a incluir
-    st.header("📋 **Columnas a Incluir**")
-    columnas_disponibles = [
-        'Nombre', 'teltelefono', 'emlMail', 'Carrera Interes',
-        'Resolución', 'Fecha Insert Lead', 'TelWhatsapp'
-    ]
-    columnas_seleccionadas = st.multiselect(
-        "Selecciona las columnas para el reporte final",
-        options=columnas_disponibles,
-        default=columnas_disponibles,  # Todas seleccionadas por defecto
-        help="Elige qué columnas incluir en los archivos de salida"
-    )
-    
-    # 4. Editor completo de grupos
+    # 3. Editor de grupos
     st.header("✏️ **Editor de Grupos**")
     
-    # Inicializar grupos si no existen
+    # Inicializar grupos
     if 'grupos' not in st.session_state:
         st.session_state.grupos = [
             {
@@ -125,7 +109,7 @@ with st.sidebar:
             }
         ]
     
-    # Botón para añadir nuevo grupo
+    # Botón para añadir grupo
     if st.button("➕ Añadir Grupo", use_container_width=True):
         st.session_state.grupos.append({
             'nombre': f"Nuevo Grupo {len(st.session_state.grupos) + 1}",
@@ -135,7 +119,7 @@ with st.sidebar:
             'activo': True
         })
     
-    # Editor dinámico de grupos
+    # Editor de grupos
     for i, grupo in enumerate(st.session_state.grupos[:]):
         with st.expander(f"**{grupo['nombre']}**", expanded=True):
             grupo['nombre'] = st.text_input(
@@ -150,7 +134,6 @@ with st.sidebar:
                 key=f"activo_{i}"
             )
             
-            # Checkbox para activar/desactivar filtro por fecha
             grupo['filtro_fecha'] = st.checkbox(
                 "Filtrar por fecha",
                 value=grupo.get('filtro_fecha', True),
@@ -175,7 +158,6 @@ with st.sidebar:
             else:
                 grupo['dias_antes'] = None
             
-            # Editor de resoluciones
             st.markdown("**Resoluciones a incluir:**")
             grupo['resoluciones'] = st.text_area(
                 "Una por línea",
@@ -184,28 +166,27 @@ with st.sidebar:
                 height=100
             ).split('\n')
             
-            # Botón para eliminar grupo
             if st.button(f"❌ Eliminar grupo", key=f"del_{i}"):
                 st.session_state.grupos.pop(i)
                 st.rerun()
 
 # ====================
-# PROCESAMIENTO PRINCIPAL (Optimizado)
+# PROCESAMIENTO PRINCIPAL
 # ====================
 uploaded_files = st.file_uploader(
-    "📤 **Sube tus archivos Excel** (.xls o .xlsx)",
+    "📤 **Subi tus archivos Excel** (.xls o .xlsx)",
     type=["xls", "xlsx"],
-    accept_multiple_files=True,
-    help="Puedes seleccionar múltiples archivos"
+    accept_multiple_files=True
 )
 
 if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary", use_container_width=True):
     with st.spinner("Procesando datos..."):
         progress_bar = st.progress(0)
         status_text = st.empty()
+        registros_invalidos = None
         
         try:
-            # Etapa 1: Carga de archivos
+            # 1. Carga de archivos
             status_text.info("📂 Cargando archivos...")
             df_unificado = cargar_archivos(uploaded_files)
             progress_bar.progress(20)
@@ -214,48 +195,41 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 st.error("❌ No se encontraron datos válidos")
                 st.stop()
             
-            # Verificar columnas seleccionadas
-            columnas_faltantes = [col for col in columnas_seleccionadas if col not in df_unificado.columns]
-            if columnas_faltantes:
-                st.error(f"❌ Columnas no encontradas: {', '.join(columnas_faltantes)}")
-                st.stop()
-            
-            # Etapa 2: Limpieza de datos
+            # 2. Limpieza de datos
             status_text.info("🧹 Limpiando datos...")
-            if 'Nombre' in columnas_seleccionadas:
+            if 'Nombre' in df_unificado.columns:
                 df_unificado['Nombre'] = df_unificado['Nombre'].apply(limpiar_nombre)
-            if 'teltelefono' in columnas_seleccionadas:
+            if 'teltelefono' in df_unificado.columns:
                 df_unificado['teltelefono'] = df_unificado['teltelefono'].apply(limpiar_telefono)
-            if 'TelWhatsapp' in columnas_seleccionadas:
+            if 'TelWhatsapp' in df_unificado.columns:
                 df_unificado['TelWhatsapp'] = df_unificado['TelWhatsapp'].apply(limpiar_telefono)
             
-            # Etapa 3: Procesamiento de fechas
-            if 'Fecha Insert Lead' in columnas_seleccionadas:
+            # 3. Procesamiento de fechas
+            if 'Fecha Insert Lead' in df_unificado.columns:
                 df_unificado['Fecha_Lead'] = pd.to_datetime(
                     df_unificado['Fecha Insert Lead'], 
                     format='%d-%m-%Y %H:%M:%S',
                     errors='coerce'
                 ).dt.date
                 
-                # Filtrar inválidos
-                n_invalidos = df_unificado['Fecha_Lead'].isna().sum()
+                # Identificar registros con fechas inválidas
+                registros_invalidos = df_unificado[df_unificado['Fecha_Lead'].isna()].copy()
+                n_invalidos = len(registros_invalidos)
+                
                 if n_invalidos > 0:
-                    st.warning(f"⚠️ Se omitieron {n_invalidos} registros con fechas no reconocidas")
                     df_unificado = df_unificado.dropna(subset=['Fecha_Lead'])
             
             progress_bar.progress(40)
             
-            # Etapa 4: Procesamiento por grupos
+            # 4. Procesamiento por grupos
             resultados = []
             grupos_activos = [g for g in st.session_state.grupos if g['activo']]
             
             for i, grupo in enumerate(grupos_activos):
                 status_text.info(f"🔍 Procesando grupo: {grupo['nombre']} ({i+1}/{len(grupos_activos)})")
                 
-                # Filtrar por resoluciones
                 df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
                 
-                # Filtrar por fecha si está activado
                 if grupo['filtro_fecha'] and grupo['dias_antes'] is not None and 'Fecha_Lead' in df_unificado.columns:
                     if isinstance(grupo['dias_antes'], list):
                         fechas = [fecha_referencia - timedelta(days=d) for d in grupo['dias_antes']]
@@ -268,9 +242,6 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     if eliminar_duplicados and 'teltelefono' in df_filtrado.columns:
                         df_filtrado = df_filtrado.drop_duplicates(subset=['teltelefono'])
                     
-                    # Seleccionar solo las columnas elegidas
-                    df_final = df_filtrado[columnas_seleccionadas].copy()
-                    
                     # Renombrar columnas para el output
                     mapeo_nombres = {
                         'teltelefono': 'Telefono',
@@ -279,7 +250,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                         'TelWhatsapp': 'Whatsapp',
                         'Fecha Insert Lead': 'Fecha_Contacto'
                     }
-                    df_final = df_final.rename(columns={k: v for k, v in mapeo_nombres.items() if k in df_final.columns})
+                    df_final = df_filtrado.rename(columns={k: v for k, v in mapeo_nombres.items() if k in df_filtrado.columns})
                     
                     resultados.append({
                         'nombre': grupo['nombre'],
@@ -296,15 +267,31 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
             progress_bar.empty()
             status_text.empty()
             
+            if registros_invalidos is not None and len(registros_invalidos) > 0:
+                st.warning(f"⚠️ Se omitieron {len(registros_invalidos)} registros con fechas no reconocidas")
+                
+                # Botón para descargar registros omitidos
+                output_invalidos = io.BytesIO()
+                with pd.ExcelWriter(output_invalidos, engine='openpyxl') as writer:
+                    registros_invalidos.to_excel(writer, index=False)
+                
+                st.download_button(
+                    label="⬇️ Descargar registros omitidos",
+                    data=output_invalidos.getvalue(),
+                    file_name=f"Registros_omitidos_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Descarga los registros que no pudieron procesarse por fechas inválidas"
+                )
+            
             if resultados:
                 st.balloons()
                 st.success(f"✅ ¡Procesamiento completado! ({len(resultados)} grupos generados)")
                 
                 # Métricas resumidas
                 cols = st.columns(3)
-                cols[0].metric("📂 Archivos", len(uploaded_files))
+                cols[0].metric("📂 Archivos cargados", len(uploaded_files))
                 cols[1].metric("👥 Leads", len(df_unificado))
-                cols[2].metric("📊 Grupos", len(resultados))
+                cols[2].metric("📊 Grupos procesados", len(resultados))
                 
                 # Descargas individuales
                 st.subheader("📥 **Descargar Reportes**", divider="rainbow")
@@ -317,7 +304,6 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                                 hide_index=True
                             )
                         
-                        # Generar Excel en memoria
                         output = io.BytesIO()
                         with pd.ExcelWriter(output, engine='openpyxl') as writer:
                             resultado['data'].to_excel(writer, index=False)
@@ -342,27 +328,18 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
 # ====================
 # SECCIÓN DE AYUDA
 # ====================
-with st.expander("📚 **Guía Completa**", expanded=False):
+with st.expander("📚 **Guía de Uso**", expanded=False):
     st.markdown("""
     ### 🎯 **Cómo usar esta herramienta**
     1. **Configura los grupos** en la barra lateral
-    2. **Selecciona las columnas** a incluir
-    3. **Sube tus archivos Excel** (.xls o .xlsx)
-    4. **Ejecuta la segmentación**
-    5. **Descarga los reportes** individuales
+    2. **Sube tus archivos Excel** (.xls o .xlsx)
+    3. **Ejecuta la segmentación**
+    4. **Descarga los reportes** individuales
 
-    ### ⚙️ **Funcionalidades clave**
-    - **Selección de columnas**: Elige qué datos incluir
-    - **Filtro flexible**: Activa/desactiva por grupo
-    - **Vista previa**: Antes de descargar
-    - **Eliminar duplicados**: Opcional por teléfono
-
-    ### 💡 **Consejos**
-    - Para grupos como "No contesta", desactiva el filtro por fecha
-    - Revisa las columnas disponibles en tus archivos
+    ### ⚠️ **Registros omitidos**
+    - Si hay registros con fechas inválidas, podrás descargarlos
+    - Revisa el formato de fecha en tus archivos (debe ser DD-MM-AAAA HH:MM:SS)
     """)
 
 # Créditos
-st.caption("""
-    *Sistema de segmentación automatizada | v2.2 | {date}*
-""".format(date=datetime.now().strftime("%d/%m/%Y")))
+st.caption(f"*Sistema de segmentación automatizada | v2.3 | {datetime.now().strftime('%d/%m/%Y')}*")
