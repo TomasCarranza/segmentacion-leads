@@ -10,7 +10,7 @@ import time
 # CONFIGURACIÓN INICIAL
 # ====================
 st.set_page_config(
-    page_title="Segmentación de Leads",
+    page_title="🚀 Segmentación Avanzada de Leads",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -29,7 +29,7 @@ st.markdown(
 )
 
 # Título principal
-st.title("📊 **Segmentación de Leads**")
+st.title("📊 **Segmentación de Leads Avanzada**")
 st.markdown("""
     *Personaliza completamente los grupos y criterios de segmentación.*  
     **👈 Configura todo en la barra lateral**
@@ -62,6 +62,40 @@ def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
         except Exception as e:
             st.warning(f"⚠️ No se pudo procesar {uploaded_file.name}: {str(e)}")
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+
+def generar_archivo_descarga(df_filtrado: pd.DataFrame) -> bytes:
+    """Genera el archivo Excel con las columnas específicas para descarga"""
+    # Columnas base que necesitamos
+    columnas_base = {
+        'Nombre': '',
+        'Telefono': '',
+        'Email': '',
+        'Programa': '',
+        'Whatsapp': ''
+    }
+    
+    # Crear DataFrame solo con las columnas deseadas
+    df_descarga = pd.DataFrame(columns=columnas_base.keys())
+    
+    # Mapear las columnas del DataFrame procesado a las de salida
+    mapeo_columnas = {
+        'Nombre': 'Nombre',
+        'teltelefono': 'Telefono',
+        'emlMail': 'Email',
+        'Carrera Interes': 'Programa',
+        'TelWhatsapp': 'Whatsapp'
+    }
+    
+    # Copiar datos de las columnas existentes
+    for col_origen, col_destino in mapeo_columnas.items():
+        if col_origen in df_filtrado.columns:
+            df_descarga[col_destino] = df_filtrado[col_origen]
+    
+    # Generar el archivo en memoria
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_descarga.to_excel(writer, index=False)
+    return output.getvalue()
 
 # ====================
 # INTERFAZ DE USUARIO
@@ -174,7 +208,7 @@ with st.sidebar:
 # PROCESAMIENTO PRINCIPAL
 # ====================
 uploaded_files = st.file_uploader(
-    "📤 **Subi tus archivos Excel** (.xls o .xlsx)",
+    "📤 **Sube tus archivos Excel** (.xls o .xlsx)",
     type=["xls", "xlsx"],
     accept_multiple_files=True
 )
@@ -242,19 +276,13 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     if eliminar_duplicados and 'teltelefono' in df_filtrado.columns:
                         df_filtrado = df_filtrado.drop_duplicates(subset=['teltelefono'])
                     
-                    # Renombrar columnas para el output
-                    mapeo_nombres = {
-                        'teltelefono': 'Telefono',
-                        'emlMail': 'Email',
-                        'Carrera Interes': 'Programa',
-                        'TelWhatsapp': 'Whatsapp',
-                        'Fecha Insert Lead': 'Fecha_Contacto'
-                    }
-                    df_final = df_filtrado.rename(columns={k: v for k, v in mapeo_nombres.items() if k in df_filtrado.columns})
+                    # Generar archivo con columnas específicas
+                    archivo_descarga = generar_archivo_descarga(df_filtrado)
                     
                     resultados.append({
                         'nombre': grupo['nombre'],
-                        'data': df_final,
+                        'data': df_filtrado,  # Mantenemos todos los datos para la vista previa
+                        'archivo': archivo_descarga,  # Archivo ya formateado
                         'registros': len(df_filtrado),
                         'filename': f"{grupo['nombre']} {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                     })
@@ -279,8 +307,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     label="⬇️ Descargar registros omitidos",
                     data=output_invalidos.getvalue(),
                     file_name=f"Registros_omitidos_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    help="Descarga los registros que no pudieron procesarse por fechas inválidas"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             
             if resultados:
@@ -289,9 +316,9 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 
                 # Métricas resumidas
                 cols = st.columns(3)
-                cols[0].metric("📂 Archivos cargados", len(uploaded_files))
+                cols[0].metric("📂 Archivos", len(uploaded_files))
                 cols[1].metric("👥 Leads", len(df_unificado))
-                cols[2].metric("📊 Grupos procesados", len(resultados))
+                cols[2].metric("📊 Grupos", len(resultados))
                 
                 # Descargas individuales
                 st.subheader("📥 **Descargar Reportes**", divider="rainbow")
@@ -304,13 +331,9 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                                 hide_index=True
                             )
                         
-                        output = io.BytesIO()
-                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                            resultado['data'].to_excel(writer, index=False)
-                        
                         st.download_button(
                             label=f"⬇️ Descargar {resultado['nombre']}",
-                            data=output.getvalue(),
+                            data=resultado['archivo'],
                             file_name=resultado['filename'],
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             use_container_width=True,
@@ -336,10 +359,18 @@ with st.expander("📚 **Guía de Uso**", expanded=False):
     3. **Ejecuta la segmentación**
     4. **Descarga los reportes** individuales
 
+    ### 📂 **Formato de salida**
+    Los archivos descargados contendrán exactamente estas columnas:
+    - Nombre
+    - Telefono
+    - Email
+    - Programa
+    - Whatsapp
+
     ### ⚠️ **Registros omitidos**
     - Si hay registros con fechas inválidas, podrás descargarlos
     - Revisa el formato de fecha en tus archivos (debe ser DD-MM-AAAA HH:MM:SS)
     """)
 
 # Créditos
-st.caption(f"*Sistema de segmentación automatizada | v2.3 | {datetime.now().strftime('%d/%m/%Y')}*")
+st.caption(f"*Sistema de segmentación automatizada | v2.4 | {datetime.now().strftime('%d/%m/%Y')}*")
