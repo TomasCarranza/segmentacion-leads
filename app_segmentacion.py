@@ -9,397 +9,202 @@ import os
 st.set_page_config(
     page_title="Segmentación de Leads",
     page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Estilos CSS personalizados
+# Estilos mínimos
 st.markdown("""
     <style>
-        section[data-testid="stSidebar"] {
-            width: 40% !important;
-        }
         .primary-button {
-            background-color: #4CAF50 !important;
+            background-color: #2e86de !important;
             color: white !important;
-            border: none !important;
         }
         .secondary-button {
-            background-color: #f0f2f6 !important;
-            color: #333 !important;
-            border: 1px solid #ccc !important;
-        }
-        .danger-button {
-            background-color: #ff4444 !important;
-            color: white !important;
-            border: none !important;
-        }
-        .group-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            background-color: #f9f9f9;
-        }
-        .client-card {
-            border: 1px solid #4CAF50;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
-            background-color: #f0faf0;
+            background-color: #f8f9fa !important;
+            border: 1px solid #ddd !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
-# Título principal
-st.title("📊 Segmentación de Leads")
-
 # Funciones principales
-def limpiar_nombre(nombre):
-    if pd.isna(nombre):
-        return ''
-    nombre_str = str(nombre).strip()
-    return nombre_str.split()[0].lower().capitalize() if nombre_str else ''
-
-def limpiar_telefono(numero):
-    return ''.join(filter(str.isdigit, str(numero))) if pd.notna(numero) else ''
-
-def validar_email(email):
-    if pd.isna(email):
-        return False
-    email_str = str(email).strip()
-    return '@' in email_str and '.' in email_str.split('@')[-1]
-
 def obtener_nombre(df):
     # Busca columnas de nombre en diferentes formatos
     for col in ['Nombre y Apellido', 'Nombre', 'nombre', 'NOMBRE']:
         if col in df.columns:
-            return df[col].apply(limpiar_nombre)
+            return df[col].apply(lambda x: str(x).split()[0].title() if pd.notna(x) else '')
     return pd.Series([''] * len(df))
 
-def cargar_archivos(uploaded_files):
+def limpiar_telefono(numero):
+    if pd.isna(numero):
+        return ''
+    return ''.join(filter(str.isdigit, str(numero)))
+
+def procesar_archivos(uploaded_files):
     dfs = []
     for uploaded_file in uploaded_files:
         try:
-            file_ext = uploaded_file.name.split('.')[-1].lower()
-            engine = 'xlrd' if file_ext == 'xls' else 'openpyxl'
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
-                tmp.write(uploaded_file.getvalue())
-                df = pd.read_excel(tmp.name, engine=engine)
+            df = pd.read_excel(uploaded_file, engine='openpyxl')
+            dfs.append(df)
+        except:
+            try:
+                df = pd.read_excel(uploaded_file, engine='xlrd')
                 dfs.append(df)
-            os.unlink(tmp.name)
-        except Exception as e:
-            st.warning(f"No se pudo procesar {uploaded_file.name}: {str(e)}")
+            except Exception as e:
+                st.warning(f"Error con {uploaded_file.name}: {str(e)}")
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
-def generar_archivo_descarga(df):
-    columnas_base = ['Nombre', 'Telefono', 'Email', 'Programa', 'Whatsapp']
-    df_descarga = pd.DataFrame(columns=columnas_base)
-    
-    mapeo_columnas = {
-        'teltelefono': 'Telefono',
-        'emlMail': 'Email',
-        'Carrera Interes': 'Programa',
-        'TelWhatsapp': 'Whatsapp'
-    }
-    
-    # Manejo especial para el nombre
-    df_descarga['Nombre'] = obtener_nombre(df)
-    
-    for col_origen, col_destino in mapeo_columnas.items():
-        if col_origen in df.columns:
-            df_descarga[col_destino] = df[col_origen]
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_descarga.to_excel(writer, index=False)
-    return output.getvalue()
-
-def guardar_configuracion():
-    st.session_state.configuracion = {
-        'clientes': st.session_state.clientes,
-        'grupos_por_cliente': st.session_state.grupos_por_cliente
-    }
-
-def cargar_configuracion():
-    if 'clientes' not in st.session_state:
-        st.session_state.clientes = ["Cliente 1"]
-        
-    if 'grupos_por_cliente' not in st.session_state:
-        st.session_state.grupos_por_cliente = {
-            "Cliente 1": [{
-                'nombre': "Grupo 1",
-                'resoluciones': ["Resolución 1"],
-                'dias_antes': 1,
-                'filtro_fecha': True
-            }]
-        }
-    
-    if 'cliente_actual' not in st.session_state:
-        st.session_state.cliente_actual = st.session_state.clientes[0]
-
 # Inicialización
-cargar_configuracion()
+if 'clientes' not in st.session_state:
+    st.session_state.clientes = {"Cliente 1": {"grupos": []}}
+
+if 'cliente_actual' not in st.session_state:
+    st.session_state.cliente_actual = "Cliente 1"
 
 # Sidebar - Gestión de clientes
 with st.sidebar:
-    st.header("👥 Gestión de Clientes")
-    
-    # Tarjeta de cliente actual
-    with st.container():
-        st.markdown(f"<div class='client-card'><b>Cliente actual:</b><br>{st.session_state.cliente_actual}</div>", 
-                   unsafe_allow_html=True)
+    st.header("Clientes")
     
     # Selector de cliente
-    nuevo_cliente = st.text_input("Nombre del nuevo cliente", key="nuevo_cliente")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("➕ Agregar", key="add_client", 
-                   help="Agregar un nuevo cliente",
-                   type="primary"):
-            if nuevo_cliente and nuevo_cliente not in st.session_state.clientes:
-                st.session_state.clientes.append(nuevo_cliente)
-                st.session_state.grupos_por_cliente[nuevo_cliente] = []
+    if 'clientes' in st.session_state and st.session_state.clientes:
+        cliente_seleccionado = st.selectbox(
+            "Seleccionar cliente",
+            list(st.session_state.clientes.keys()),
+            index=list(st.session_state.clientes.keys()).index(st.session_state.cliente_actual)
+        
+        if cliente_seleccionado != st.session_state.cliente_actual:
+            st.session_state.cliente_actual = cliente_seleccionado
+            st.rerun()
+    
+    # Agregar nuevo cliente
+    with st.form("nuevo_cliente_form"):
+        nuevo_cliente = st.text_input("Nombre del nuevo cliente", key="nuevo_cliente_input")
+        if st.form_submit_button("Agregar cliente", type="primary") and nuevo_cliente:
+            if nuevo_cliente not in st.session_state.clientes:
+                st.session_state.clientes[nuevo_cliente] = {"grupos": []}
                 st.session_state.cliente_actual = nuevo_cliente
-                guardar_configuracion()
                 st.rerun()
     
-    with col2:
-        if len(st.session_state.clientes) > 1:
-            if st.button("🗑️ Eliminar actual", 
-                        key="del_client",
-                        help="Eliminar el cliente actual",
-                        type="secondary"):
-                st.session_state.clientes.remove(st.session_state.cliente_actual)
-                del st.session_state.grupos_por_cliente[st.session_state.cliente_actual]
-                st.session_state.cliente_actual = st.session_state.clientes[0]
-                guardar_configuracion()
-                st.rerun()
-    
-    # Lista de clientes
-    st.markdown("**Cambiar cliente:**")
-    for cliente in st.session_state.clientes:
-        if cliente != st.session_state.cliente_actual:
-            if st.button(cliente, key=f"sel_{cliente}", 
-                        help=f"Seleccionar {cliente}",
-                        type="secondary"):
-                st.session_state.cliente_actual = cliente
-                st.rerun()
+    # Eliminar cliente actual (si hay más de uno)
+    if len(st.session_state.clientes) > 1:
+        if st.button("Eliminar cliente actual", type="secondary"):
+            del st.session_state.clientes[st.session_state.cliente_actual]
+            st.session_state.cliente_actual = list(st.session_state.clientes.keys())[0]
+            st.rerun()
     
     st.divider()
     
-    # Configuración general
-    st.header("⚙️ Configuración")
-    fecha_referencia = st.date_input("Fecha base", datetime.now(), key="fecha_ref")
-    
-    with st.expander("Opciones avanzadas"):
-        eliminar_duplicados = st.checkbox("Eliminar duplicados", True, 
-                                         help="Eliminar leads con teléfono/email repetidos")
-        validar_emails = st.checkbox("Validar emails", True, 
-                                    help="Excluir emails con formato inválido")
-        mostrar_vista_previa = st.checkbox("Mostrar vista previa", True)
+    # Configuración
+    st.header("Configuración")
+    fecha_referencia = st.date_input("Fecha base", datetime.now())
     
     st.divider()
     
     # Gestión de grupos
-    st.header("✏️ Grupos")
+    st.header("Grupos")
     
-    if st.button("➕ Nuevo grupo", 
-                key="add_group",
-                help="Agregar un nuevo grupo de segmentación",
-                type="primary"):
-        nuevo_grupo = {
-            'nombre': f"Grupo {len(st.session_state.grupos_por_cliente[st.session_state.cliente_actual]) + 1}",
-            'resoluciones': ["Resolución 1"],
-            'dias_antes': 1,
-            'filtro_fecha': True
-        }
-        st.session_state.grupos_por_cliente[st.session_state.cliente_actual].append(nuevo_grupo)
-        guardar_configuracion()
-        st.rerun()
+    # Agregar grupo
+    with st.form("nuevo_grupo_form"):
+        nombre_grupo = st.text_input("Nombre del nuevo grupo", key="nuevo_grupo_input")
+        if st.form_submit_button("Agregar grupo", type="primary") and nombre_grupo:
+            st.session_state.clientes[st.session_state.cliente_actual]["grupos"].append({
+                "nombre": nombre_grupo,
+                "resoluciones": [],
+                "dias_antes": [1]  # Por defecto 1 día antes
+            })
+            st.rerun()
     
     # Lista de grupos
-    grupos = st.session_state.grupos_por_cliente.get(st.session_state.cliente_actual, [])
-    for i, grupo in enumerate(grupos[:]):
-        with st.container():
-            st.markdown(f"<div class='group-card'>", unsafe_allow_html=True)
+    if st.session_state.cliente_actual in st.session_state.clientes:
+        grupos = st.session_state.clientes[st.session_state.cliente_actual]["grupos"]
+        for i, grupo in enumerate(grupos):
+            st.subheader(grupo["nombre"], divider="gray")
             
-            cols = st.columns([4, 1])
-            with cols[0]:
-                grupo['nombre'] = st.text_input("Nombre del grupo", grupo['nombre'], 
-                                              key=f"nombre_{i}",
-                                              label_visibility="collapsed")
-            with cols[1]:
-                if st.button("🗑️", 
-                           key=f"del_{i}",
-                           help="Eliminar este grupo",
-                           type="secondary"):
-                    grupos.pop(i)
-                    guardar_configuracion()
-                    st.rerun()
-            
-            grupo['resoluciones'] = st.text_area(
+            # Resoluciones
+            grupo["resoluciones"] = st.text_area(
                 "Resoluciones (una por línea)",
-                "\n".join(grupo['resoluciones']),
+                "\n".join(grupo["resoluciones"]),
                 key=f"res_{i}",
                 height=100
             ).split('\n')
             
-            grupo['filtro_fecha'] = st.checkbox(
-                "Filtrar por fecha", 
-                grupo['filtro_fecha'],
-                key=f"filtro_{i}"
+            # Configuración de fecha
+            grupo["dias_antes"] = st.multiselect(
+                "Días antes de la fecha base",
+                options=list(range(8)),
+                default=grupo["dias_antes"],
+                key=f"dias_{i}"
             )
             
-            if grupo['filtro_fecha']:
-                cols = st.columns(2)
-                with cols[0]:
-                    tipo_filtro = st.radio(
-                        "Tipo de filtro",
-                        ["Días antes", "Rango de fechas"],
-                        key=f"tipo_filtro_{i}",
-                        index=0 if isinstance(grupo['dias_antes'], (int, list)) else 1
-                    )
-                
-                with cols[1]:
-                    if tipo_filtro == "Días antes":
-                        grupo['dias_antes'] = st.multiselect(
-                            "Días a incluir",
-                            options=list(range(8)),
-                            default=grupo['dias_antes'] if isinstance(grupo['dias_antes'], list) else [grupo['dias_antes']] if isinstance(grupo['dias_antes'], int) else [1],
-                            key=f"dias_{i}"
-                        )
-                    else:
-                        # Implementar rango de fechas si es necesario
-                        pass
-            
-            st.markdown("</div>", unsafe_allow_html=True)
+            # Eliminar grupo
+            if st.button("Eliminar grupo", key=f"del_{i}", type="secondary"):
+                grupos.pop(i)
+                st.rerun()
 
 # Área principal
+st.title("Segmentación de Leads")
+
 uploaded_files = st.file_uploader(
     "Subir archivos Excel (.xls, .xlsx)", 
     type=["xls", "xlsx"], 
-    accept_multiple_files=True,
-    help="Puedes subir uno o varios archivos a la vez"
+    accept_multiple_files=True
 )
 
 if uploaded_files:
-    if st.button("🚀 Procesar archivos", 
-                type="primary",
-                help="Iniciar el procesamiento de los archivos subidos",
-                use_container_width=True):
-        with st.spinner("Procesando datos..."):
+    if st.button("Procesar archivos", type="primary"):
+        with st.spinner("Procesando..."):
             try:
-                df = cargar_archivos(uploaded_files)
+                df = procesar_archivos(uploaded_files)
                 
-                # Limpieza de datos
+                # Procesamiento básico
                 df['Nombre'] = obtener_nombre(df)
                 
                 if 'teltelefono' in df.columns:
-                    df['teltelefono'] = df['teltelefono'].apply(limpiar_telefono)
-                if 'TelWhatsapp' in df.columns:
-                    df['TelWhatsapp'] = df['TelWhatsapp'].apply(limpiar_telefono)
-                if validar_emails and 'emlMail' in df.columns:
-                    df['email_valido'] = df['emlMail'].apply(validar_email)
-                
-                # Procesamiento de fechas
-                if 'Fecha Insert Lead' in df.columns:
-                    df['Fecha_Lead'] = pd.to_datetime(
-                        df['Fecha Insert Lead'], 
-                        format='%d-%m-%Y %H:%M:%S', 
-                        errors='coerce'
-                    ).dt.date
-                    df = df.dropna(subset=['Fecha_Lead'])
-                
-                # Eliminar duplicados
-                if eliminar_duplicados:
-                    subset = ['teltelefono']
-                    if validar_emails and 'emlMail' in df.columns:
-                        subset.append('emlMail')
-                    df = df.drop_duplicates(subset=subset)
+                    df['Telefono'] = df['teltelefono'].apply(limpiar_telefono)
                 
                 # Procesar grupos
                 resultados = []
-                grupos_activos = st.session_state.grupos_por_cliente[st.session_state.cliente_actual]
+                grupos = st.session_state.clientes[st.session_state.cliente_actual]["grupos"]
                 
-                for grupo in grupos_activos:
-                    df_filtrado = df[df['Resolución'].isin(grupo['resoluciones'])]
+                for grupo in grupos:
+                    if not grupo["resoluciones"]:
+                        continue
+                        
+                    df_filtrado = df[df['Resolución'].isin(grupo["resoluciones"])]
                     
-                    if grupo['filtro_fecha'] and grupo.get('dias_antes') and 'Fecha_Lead' in df.columns:
-                        if isinstance(grupo['dias_antes'], list):
-                            fechas = [fecha_referencia - timedelta(days=d) for d in grupo['dias_antes']]
-                            df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].isin(fechas)]
+                    if 'Fecha Insert Lead' in df.columns and grupo["dias_antes"]:
+                        df['Fecha_Lead'] = pd.to_datetime(df['Fecha Insert Lead'], errors='coerce').dt.date
+                        fechas = [fecha_referencia - timedelta(days=d) for d in grupo["dias_antes"]]
+                        df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].isin(fechas)]
                     
                     if not df_filtrado.empty:
-                        archivo = generar_archivo_descarga(df_filtrado)
+                        output = io.BytesIO()
+                        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                            df_filtrado[['Nombre', 'Telefono', 'emlMail', 'Carrera Interes', 'Resolución']].to_excel(writer, index=False)
                         resultados.append({
-                            'nombre': grupo['nombre'],
-                            'data': df_filtrado,
-                            'archivo': archivo,
-                            'registros': len(df_filtrado),
-                            'filename': f"{grupo['nombre']}_{fecha_referencia.strftime('%Y%m%d')}.xlsx"
+                            'nombre': grupo["nombre"],
+                            'data': output.getvalue(),
+                            'registros': len(df_filtrado)
                         })
                 
                 st.session_state.resultados = resultados
-                st.success(f"Procesamiento completado: {len(resultados)} grupos creados")
+                st.success("Procesamiento completado")
                 
             except Exception as e:
-                st.error(f"Error durante el procesamiento: {str(e)}")
+                st.error(f"Error: {str(e)}")
 
 # Mostrar resultados
 if 'resultados' in st.session_state and st.session_state.resultados:
-    st.header("📂 Resultados")
-    
-    cols = st.columns(3)
-    cols[0].metric("Archivos procesados", len(uploaded_files))
-    cols[1].metric("Total de leads", len(df) if 'df' in locals() else 0)
-    cols[2].metric("Grupos generados", len(st.session_state.resultados))
+    st.header("Resultados")
     
     for resultado in st.session_state.resultados:
-        with st.expander(f"{resultado['nombre']} ({resultado['registros']} registros)"):
-            if mostrar_vista_previa:
-                st.dataframe(
-                    resultado['data'][['Nombre', 'teltelefono', 'emlMail', 'Resolución', 'Fecha_Lead']].head(5),
-                    use_container_width=True,
-                    hide_index=True
-                )
-            
-            st.download_button(
-                f"⬇️ Descargar {resultado['nombre']}",
-                data=resultado['archivo'],
-                file_name=resultado['filename'],
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True
-            )
+        st.download_button(
+            label=f"Descargar {resultado['nombre']} ({resultado['registros']} registros)",
+            data=resultado['data'],
+            file_name=f"{resultado['nombre']}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary"
+        )
     
-    if st.button("🔄 Nuevo procesamiento", 
-                type="secondary",
-                use_container_width=True):
+    if st.button("Nuevo procesamiento", type="secondary"):
         del st.session_state.resultados
         st.rerun()
-
-# Sección de ayuda
-with st.expander("❓ Ayuda"):
-    st.markdown("""
-    ### Cómo usar esta herramienta
-    1. **Configura los grupos** en la barra lateral
-    2. **Sube tus archivos Excel** (.xls o .xlsx)
-    3. **Haz clic en Procesar**
-    4. **Descarga los resultados** que necesites
-    
-    ### Columnas requeridas
-    - Nombre (o 'Nombre y Apellido')
-    - teltelefono
-    - Resolución
-    - Fecha Insert Lead
-    - emlMail (opcional para validación)
-    
-    ### Tips
-    - Puedes crear múltiples clientes con configuraciones diferentes
-    - Cada cliente puede tener sus propios grupos de segmentación
-    - Los resultados permanecen disponibles hasta que cierres la página
-    """)
-
-st.caption(f"Versión {datetime.now().strftime('%d/%m/%Y')}")
