@@ -136,26 +136,21 @@ with st.sidebar:
             else:
                 grupo['dias_antes'] = None
             
-            st.markdown("**Resoluciones a incluir:**")
-            if grupo['filtro_resolucion']:  # Solo mostrar si está activado el filtro
-                if isinstance(grupo['resoluciones'], dict):
-                    # Para UNAB Nurturing
-                    st.info("Este grupo usa resoluciones por día de la semana")
-                    for dia, resoluciones in grupo['resoluciones'].items():
-                        grupo['resoluciones'][dia] = st.text_area(
-                            f"Resoluciones para {dia}",
-                            value="\n".join(resoluciones),
-                            key=f"res_{i}_{dia}",
-                            height=100
-                        ).split('\n')
-                else:
-                    # Para otros grupos
-                    grupo['resoluciones'] = st.text_area(
-                        "Una por línea",
-                        value="\n".join(grupo['resoluciones']),
-                        key=f"res_{i}",
-                        height=100
-                    ).split('\n')
+            # Editor de resoluciones
+            st.subheader("Resoluciones")
+            if isinstance(grupo['resoluciones'], dict):
+                # Para UNAB Nurturing
+                dia_actual = fecha_referencia.strftime('%A')
+                resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
+                grupo['resoluciones'] = resoluciones_dia
+            else:
+                # Para otros grupos
+                resoluciones_texto = st.text_area(
+                    "Resoluciones",
+                    value="\n".join(grupo['resoluciones']),
+                    key=f"resoluciones_{i}"
+                )
+                grupo['resoluciones'] = [r.strip() for r in resoluciones_texto.split('\n') if r.strip()]
             
             if st.button(f"❌ Eliminar grupo", key=f"del_{i}"):
                 st.session_state.grupos.pop(i)

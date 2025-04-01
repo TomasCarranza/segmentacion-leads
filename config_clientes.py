@@ -6,8 +6,8 @@ CLIENTES = {
         'nombre': 'CREXE',
         'grupos': [
             {
-                'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                'nombre': 'Se brinda info',
+                'resoluciones': ['Se brinda información', 'Se brinda información Whatsapp', 'Volver a llamar'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
                 'dias_antes': 1,
@@ -21,11 +21,11 @@ CLIENTES = {
                 }
             },
             {
-                'nombre': 'Nurturing',
-                'resoluciones': ['11', '12', '13', '14', '15', '16', '17', '18', '19', '20'],
+                'nombre': 'Analizando propuesta',
+                'resoluciones': ['Analizando propuesta', 'Oportunidad de venta', 'En proceso de pago'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
-                'dias_antes': 1,
+                'dias_antes': 2,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -34,18 +34,13 @@ CLIENTES = {
                     'Programa': 'Programa',
                     'Resolución': 'Resolución'
                 }
-            }
-        ]
-    },
-    'ULINEA': {
-        'nombre': 'ULINEA',
-        'grupos': [
+            },
             {
-                'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                'nombre': 'Le parece caro',
+                'resoluciones': ['Le parece caro', 'Siguiente cohorte', 'Motivos personales', 'No es la oferta buscada'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
-                'dias_antes': 1,
+                'dias_antes': 2,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -54,18 +49,28 @@ CLIENTES = {
                     'Programa': 'Programa',
                     'Resolución': 'Resolución'
                 }
-            }
-        ]
-    },
-    'ANAHUAC': {
-        'nombre': 'ANAHUAC',
-        'grupos': [
+            },
             {
-                'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                'nombre': 'No contesta',
+                'resoluciones': ['No contesta', 'NotProcessed'],
+                'filtro_resolucion': True,
+                'filtro_fecha': False,
+                'dias_antes': None,
+                'columnas_salida': {
+                    'Nombre': 'Nombre',
+                    'Apellido': 'Apellido',
+                    'Email': 'Email',
+                    'Tel': 'Tel',
+                    'Programa': 'Programa',
+                    'Resolución': 'Resolución'
+                }
+            },
+            {
+                'nombre': 'Spam',
+                'resoluciones': ['Spam - Desconoce haber solicitado informacion', 'Telefono erroneo o fuera de servicio', 'Pide no ser llamado', 'Imposible contactar'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
-                'dias_antes': 1,
+                'dias_antes': [0, 1],
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -85,7 +90,7 @@ CLIENTES = {
                 'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
-                'dias_antes': 1,
+                'dias_antes': [0, 1],
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -98,12 +103,32 @@ CLIENTES = {
             {
                 'nombre': 'Nurturing',
                 'resoluciones': {
-                    'Monday': ['1', '2', '3', '4', '5'],
-                    'Tuesday': ['6', '7', '8', '9', '10'],
-                    'Wednesday': ['11', '12', '13', '14', '15'],
-                    'Thursday': ['16', '17', '18', '19', '20'],
-                    'Friday': ['21', '22', '23', '24', '25']
+                    'Monday': ['Se brinda información', 'Analizando propuesta', 'Oportunidad de venta'],
+                    'Tuesday': ['No contesta', 'buzón de voz', 'teléfono erróneo', 'imposible contactar'],
+                    'Wednesday': ['Volver a llamar', 'volver a llamar ultimo intento'],
+                    'Thursday': ['Dejo de responder', 'Le parece caro', 'Siguiente cohorte', 'Inscripto en otra universidad'],
+                    'Friday': ['Horarios', 'Motivos personales', 'Modalidad de cursado', 'No es la oferta buscada']
                 },
+                'filtro_resolucion': True,
+                'filtro_fecha': False,
+                'dias_antes': None,
+                'columnas_salida': {
+                    'Nombre': 'Nombre',
+                    'Apellido': 'Apellido',
+                    'Email': 'Email',
+                    'Tel': 'Tel',
+                    'Programa': 'Programa',
+                    'Resolución': 'Resolución'
+                }
+            }
+        ]
+    },
+    'ULINEA': {
+        'nombre': 'ULINEA',
+        'grupos': [
+            {
+                'nombre': 'Bienvenida',
+                'resoluciones': ['1', '2', '3', '4', '5'],
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
                 'dias_antes': 1,
@@ -112,8 +137,28 @@ CLIENTES = {
                     'Apellido': 'Apellido',
                     'Email': 'Email',
                     'Tel': 'Tel',
-                    'Programa': 'Programa',
-                    'Resolución': 'Resolución'
+                    'WhatsApp': 'WhatsApp',
+                    'Tipificacion': 'Ultima Resolución'
+                }
+            }
+        ]
+    },
+    'ANAHUAC': {
+        'nombre': 'ANAHUAC',
+        'grupos': [
+            {
+                'nombre': 'Bienvenida',
+                'resoluciones': ['1', '2', '3', '4', '5'],
+                'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
+                'columnas_salida': {
+                    'Nombre': 'Nombre',
+                    'Apellido': 'Apellido',
+                    'Email': 'Email',
+                    'Tel': 'Tel',
+                    'WhatsApp': 'WhatsApp',
+                    'Tipificacion': 'Ultima Resolución'
                 }
             }
         ]
@@ -130,10 +175,10 @@ CLIENTES = {
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
-                    'Email': 'Email',
-                    'Tel': 'Tel',
-                    'Programa': 'Programa',
-                    'Resolución': 'Resolución'
+                    'Email': 'e-Mail',
+                    'Tel': 'Móvil',
+                    'Programa': 'Carrera de Interes',
+                    'Cod_Programa': 'Cod_Programa'
                 }
             }
         ]

@@ -4,28 +4,38 @@ import io
 
 def limpiar_nombre(nombre: str) -> str:
     """Limpia y formatea el nombre."""
-    return str(nombre).split()[0].lower().capitalize() if pd.notna(nombre) else ''
+    if pd.isna(nombre):
+        return ''
+    # Tomar solo la primera palabra y capitalizar
+    return nombre.split()[0].capitalize() if nombre else ''
 
-def limpiar_telefono(numero: str) -> str:
-    """Elimina caracteres no numéricos de teléfonos."""
-    return ''.join(filter(str.isdigit, str(numero))) if pd.notna(numero) else ''
+def limpiar_telefono(telefono: str) -> str:
+    """Limpia y formatea el teléfono."""
+    if pd.isna(telefono):
+        return ''
+    # Eliminar caracteres no numéricos
+    return ''.join(filter(str.isdigit, str(telefono)))
+
+def limpiar_email(email: str) -> str:
+    """Limpia y formatea el email."""
+    if pd.isna(email):
+        return ''
+    return str(email).lower().strip()
+
+def limpiar_programa(programa: str) -> str:
+    """Limpia y formatea el programa."""
+    if pd.isna(programa):
+        return ''
+    return str(programa).strip()
 
 def limpiar_resolucion(resolucion: str) -> str:
-    """Limpia y estandariza el formato de resolución."""
+    """Limpia y formatea la resolución."""
     if pd.isna(resolucion):
         return ''
-    
-    # Convertir a string y limpiar
-    resolucion = str(resolucion).strip()
-    
-    # Si está vacío, retornar vacío
-    if not resolucion:
-        return ''
-    
-    # Limitar a 1000 caracteres
-    resolucion = resolucion[:1000]
-    
-    return resolucion
+    # Para ULINEA y ANAHUAC, extraer solo el número
+    if ' - ' in str(resolucion):
+        return str(resolucion).split(' - ')[0].strip()
+    return str(resolucion).strip()
 
 def procesar_ulinea_anahuac(df: pd.DataFrame) -> pd.DataFrame:
     """Procesa el DataFrame para ULINEA y ANAHUAC."""
@@ -41,15 +51,9 @@ def procesar_ulinea_anahuac(df: pd.DataFrame) -> pd.DataFrame:
     if 'Email' in df.columns:
         df['Email'] = df['Email'].apply(limpiar_email)
     
-    # Limpiar y estandarizar programas
-    if 'Programa' in df.columns:
-        df['Programa'] = df['Programa'].apply(limpiar_programa)
-    
     # Limpiar y estandarizar resoluciones
-    if 'Resolución' in df.columns:
-        df['Resolución'] = df['Resolución'].apply(limpiar_resolucion)
-        # Limitar a 1000 resoluciones
-        df = df[df['Resolución'].str.len() <= 1000]
+    if 'Ultima Resolución' in df.columns:
+        df['Ultima Resolución'] = df['Ultima Resolución'].apply(limpiar_resolucion)
     
     return df
 
@@ -59,30 +63,25 @@ def procesar_pk_cba(df: pd.DataFrame) -> pd.DataFrame:
     if 'Nombre' in df.columns:
         df['Nombre'] = df['Nombre'].apply(limpiar_nombre)
     
+    # Limpiar y estandarizar teléfonos
+    if 'Móvil' in df.columns:
+        df['Móvil'] = df['Móvil'].apply(limpiar_telefono)
+    
+    # Limpiar y estandarizar emails
+    if 'e-Mail' in df.columns:
+        df['e-Mail'] = df['e-Mail'].apply(limpiar_email)
+    
+    # Limpiar y estandarizar programas
+    if 'Carrera de Interes' in df.columns:
+        df['Carrera de Interes'] = df['Carrera de Interes'].apply(limpiar_programa)
+    
     # Agregar Cod_Programa
     if 'Carrera de Interes' in df.columns:
-        mapeo_programas = {
-            'Abogacía': 1,
-            'Tecnicatura Universitaria en Martillero Público y Corredor': 2,
-            'Licenciatura en Psicopedagogía': 3
-        }
-        df['Cod_Programa'] = df['Carrera de Interes'].map(
-            lambda x: mapeo_programas.get(str(x).strip(), 4)
-        )
-    
-    # Asegurar que todas las columnas necesarias existan
-    columnas_requeridas = {
-        'Nombre': 'Nombre',
-        'Apellido': 'Apellido',
-        'e-Mail': 'Email',
-        'Móvil': 'Tel',
-        'Carrera de Interes': 'Programa',
-        'Cod_Programa': 'Cod_Programa'
-    }
-    
-    for col_origen, col_destino in columnas_requeridas.items():
-        if col_origen not in df.columns:
-            df[col_origen] = ''  # Agregar columna vacía si no existe
+        df['Cod_Programa'] = df['Carrera de Interes'].apply(lambda x: {
+            'Abogacía': '1',
+            'Tecnicatura Universitaria en Martillero Público y Corredor': '2',
+            'Licenciatura en Psicopedagogía': '3'
+        }.get(x, '4'))
     
     return df
 
@@ -112,7 +111,7 @@ def procesar_unab(df: pd.DataFrame) -> pd.DataFrame:
 
 def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFrame:
     """Procesa el DataFrame según el cliente específico."""
-    if cliente_id == 'ULINEA_ANAHUAC':
+    if cliente_id in ['ULINEA', 'ANAHUAC']:
         return procesar_ulinea_anahuac(df)
     elif cliente_id == 'PK_CBA':
         return procesar_pk_cba(df)
@@ -120,45 +119,45 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
         return procesar_unab(df)
     return df
 
-def cargar_archivo(uploaded_file, cliente_id: str) -> pd.DataFrame:
-    """Carga un archivo según el tipo de cliente."""
+def cargar_archivo(archivo, cliente_id: str) -> pd.DataFrame:
+    """Carga y procesa un archivo según el cliente."""
     try:
-        file_ext = uploaded_file.name.split('.')[-1].lower()
-        
-        if cliente_id == 'PK_CBA' and file_ext == 'csv':
-            # Intentar diferentes codificaciones
-            codificaciones = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
-            for codificacion in codificaciones:
+        if cliente_id == 'PK_CBA':
+            # Intentar diferentes encodings para CSV
+            encodings = ['utf-8', 'latin1', 'iso-8859-1']
+            for encoding in encodings:
                 try:
-                    df = pd.read_csv(uploaded_file, encoding=codificacion)
-                    if not df.empty and 'Nombre' in df.columns:
-                        return df
+                    df = pd.read_csv(archivo, encoding=encoding)
+                    break
                 except UnicodeDecodeError:
                     continue
-            # Si ninguna codificación funciona, intentar con la codificación por defecto
-            return pd.read_csv(uploaded_file)
+        else:
+            # Para archivos Excel
+            df = pd.read_excel(archivo)
         
-        engine = 'xlrd' if file_ext == 'xls' else 'openpyxl'
-        return pd.read_excel(uploaded_file, engine=engine)
+        return df
     except Exception as e:
-        raise Exception(f"Error al cargar el archivo {uploaded_file.name}: {str(e)}")
+        st.error(f"Error al cargar el archivo: {str(e)}")
+        return pd.DataFrame()
 
 def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id: str) -> bytes:
-    """Genera el archivo Excel con las columnas específicas para descarga."""
-    # Crear DataFrame solo con las columnas deseadas
-    df_descarga = pd.DataFrame(columns=columnas_salida.values())
-    
-    # Copiar datos de las columnas existentes
-    for col_origen, col_destino in columnas_salida.items():
-        if col_origen in df.columns:
-            df_descarga[col_destino] = df[col_origen]
-    
-    # Generar el archivo en memoria sin formato
+    """Genera un archivo Excel para descarga sin formato."""
     output = io.BytesIO()
-    
-    # Usar pandas para escribir el archivo sin formato
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Escribir el DataFrame sin formato
-        df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
+        # Escribir DataFrame con las columnas especificadas
+        df[list(columnas_salida.keys())].to_excel(writer, index=False, sheet_name='Sheet1')
+        
+        # Obtener la hoja de trabajo
+        worksheet = writer.sheets['Sheet1']
+        
+        # Eliminar formato de todas las celdas
+        for row in worksheet.iter_rows():
+            for cell in row:
+                cell.font = None
+                cell.border = None
+                cell.fill = None
+                cell.alignment = None
+                cell.protection = None
+                cell.style = None
     
     return output.getvalue() 
