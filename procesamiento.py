@@ -10,22 +10,46 @@ def limpiar_telefono(numero: str) -> str:
     """Elimina caracteres no numéricos de teléfonos."""
     return ''.join(filter(str.isdigit, str(numero))) if pd.notna(numero) else ''
 
-def formatear_resolucion_ulinea(resolucion: str) -> str:
-    """Formatea la resolución para ULINEA/ANAHUAC, extrayendo solo el número."""
+def limpiar_resolucion(resolucion: str) -> str:
+    """Limpia y estandariza el formato de resolución."""
     if pd.isna(resolucion):
         return ''
-    match = re.match(r'(\d+)\s*-\s*.*', str(resolucion))
-    return match.group(1) if match else ''
+    
+    # Convertir a string y limpiar
+    resolucion = str(resolucion).strip()
+    
+    # Si está vacío, retornar vacío
+    if not resolucion:
+        return ''
+    
+    # Limitar a 1000 caracteres
+    resolucion = resolucion[:1000]
+    
+    return resolucion
 
 def procesar_ulinea_anahuac(df: pd.DataFrame) -> pd.DataFrame:
-    """Procesa el DataFrame para ULINEA/ANAHUAC."""
+    """Procesa el DataFrame para ULINEA y ANAHUAC."""
     # Limpiar nombres
     if 'Nombre' in df.columns:
         df['Nombre'] = df['Nombre'].apply(limpiar_nombre)
     
-    # Formatear resoluciones
-    if 'Ultima Resolución' in df.columns:
-        df['Ultima Resolución'] = df['Ultima Resolución'].apply(formatear_resolucion_ulinea)
+    # Limpiar y estandarizar teléfonos
+    if 'Tel' in df.columns:
+        df['Tel'] = df['Tel'].apply(limpiar_telefono)
+    
+    # Limpiar y estandarizar emails
+    if 'Email' in df.columns:
+        df['Email'] = df['Email'].apply(limpiar_email)
+    
+    # Limpiar y estandarizar programas
+    if 'Programa' in df.columns:
+        df['Programa'] = df['Programa'].apply(limpiar_programa)
+    
+    # Limpiar y estandarizar resoluciones
+    if 'Resolución' in df.columns:
+        df['Resolución'] = df['Resolución'].apply(limpiar_resolucion)
+        # Limitar a 1000 resoluciones
+        df = df[df['Resolución'].str.len() <= 1000]
     
     return df
 
@@ -62,6 +86,30 @@ def procesar_pk_cba(df: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def procesar_unab(df: pd.DataFrame) -> pd.DataFrame:
+    """Procesa el DataFrame para UNAB."""
+    # Limpiar nombres
+    if 'Nombre' in df.columns:
+        df['Nombre'] = df['Nombre'].apply(limpiar_nombre)
+    
+    # Limpiar y estandarizar teléfonos
+    if 'Tel' in df.columns:
+        df['Tel'] = df['Tel'].apply(limpiar_telefono)
+    
+    # Limpiar y estandarizar emails
+    if 'Email' in df.columns:
+        df['Email'] = df['Email'].apply(limpiar_email)
+    
+    # Limpiar y estandarizar programas
+    if 'Programa' in df.columns:
+        df['Programa'] = df['Programa'].apply(limpiar_programa)
+    
+    # Limpiar y estandarizar resoluciones
+    if 'Resolución' in df.columns:
+        df['Resolución'] = df['Resolución'].apply(limpiar_resolucion)
+    
+    return df
+
 def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFrame:
     """Procesa el DataFrame según el cliente específico."""
     if cliente_id == 'ULINEA_ANAHUAC':
@@ -69,10 +117,7 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
     elif cliente_id == 'PK_CBA':
         return procesar_pk_cba(df)
     elif cliente_id == 'UNAB':
-        # Asegurar que la columna Resolución exista
-        if 'Resolución' not in df.columns:
-            df['Resolución'] = ''
-        return df
+        return procesar_unab(df)
     return df
 
 def cargar_archivo(uploaded_file, cliente_id: str) -> pd.DataFrame:

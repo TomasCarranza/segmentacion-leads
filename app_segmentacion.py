@@ -222,7 +222,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     if grupo['filtro_resolucion'] and resoluciones_dia:
                         df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
                     else:
-                        df_filtrado = df_unificado.copy()
+                        df_filtrado = pd.DataFrame()  # No mostrar nada si no hay resoluciones para el día
                     
                     # Formato especial para UNAB Nurturing
                     nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
