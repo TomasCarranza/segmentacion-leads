@@ -111,16 +111,37 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     # Generar el archivo en memoria sin formato
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Escribir el DataFrame sin formato
         df_descarga.to_excel(writer, index=False)
-        # Asegurar que no haya formato
+        # Obtener la hoja de trabajo
         worksheet = writer.sheets['Sheet1']
+        
+        # Eliminar estilos de manera segura
         for row in worksheet.iter_rows():
             for cell in row:
+                # Eliminar estilos básicos
                 cell.font = None
                 cell.border = None
                 cell.fill = None
                 cell.alignment = None
                 cell.number_format = None
-                cell.protection = None
-                cell.style = None
+                
+                # Eliminar estilos adicionales de manera segura
+                if hasattr(cell, 'style'):
+                    cell.style = None
+                if hasattr(cell, 'protection'):
+                    cell.protection = None
+                
+                # Asegurar que no haya estilos heredados
+                if hasattr(cell, '_style'):
+                    cell._style = None
+        
+        # Eliminar estilos de la hoja
+        if hasattr(worksheet, '_styles'):
+            worksheet._styles = None
+        
+        # Eliminar estilos del libro
+        if hasattr(writer.book, '_styles'):
+            writer.book._styles = None
+    
     return output.getvalue() 
