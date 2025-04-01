@@ -112,20 +112,8 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     output = io.BytesIO()
     
     # Usar pandas para escribir el archivo sin formato
-    with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         # Escribir el DataFrame sin formato
         df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
-        
-        # Obtener la hoja de trabajo
-        worksheet = writer.sheets['Sheet1']
-        
-        # Eliminar estilos básicos
-        for row in worksheet.iter_rows():
-            for cell in row:
-                cell.font = None
-                cell.border = None
-                cell.fill = None
-                cell.alignment = None
-                cell.number_format = None
     
     return output.getvalue() 
