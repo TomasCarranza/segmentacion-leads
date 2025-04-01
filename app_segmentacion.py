@@ -138,19 +138,20 @@ with st.sidebar:
             
             # Editor de resoluciones
             st.subheader("Resoluciones")
-            if isinstance(grupo['resoluciones'], dict):
-                # Para UNAB Nurturing
-                dia_actual = fecha_referencia.strftime('%A')
-                resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
-                grupo['resoluciones'] = resoluciones_dia
-            else:
-                # Para otros grupos
-                resoluciones_texto = st.text_area(
-                    "Resoluciones",
-                    value="\n".join(grupo['resoluciones']),
-                    key=f"resoluciones_{i}"
-                )
-                grupo['resoluciones'] = [r.strip() for r in resoluciones_texto.split('\n') if r.strip()]
+            if grupo['resoluciones'] is not None:  # Solo mostrar editor si hay resoluciones
+                if isinstance(grupo['resoluciones'], dict):
+                    # Para UNAB Nurturing
+                    dia_actual = fecha_referencia.strftime('%A')
+                    resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
+                    grupo['resoluciones'] = resoluciones_dia
+                else:
+                    # Para otros grupos
+                    resoluciones_texto = st.text_area(
+                        "Resoluciones",
+                        value="\n".join(grupo['resoluciones']),
+                        key=f"resoluciones_{i}"
+                    )
+                    grupo['resoluciones'] = [r.strip() for r in resoluciones_texto.split('\n') if r.strip()]
             
             if st.button(f"❌ Eliminar grupo", key=f"del_{i}"):
                 st.session_state.grupos.pop(i)

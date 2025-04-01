@@ -32,10 +32,19 @@ def limpiar_resolucion(resolucion: str) -> str:
     """Limpia y formatea la resolución."""
     if pd.isna(resolucion):
         return ''
+    
+    # Convertir a string y limpiar
+    resolucion = str(resolucion).strip()
+    
+    # Si está vacío, retornar vacío
+    if not resolucion:
+        return ''
+    
     # Para ULINEA y ANAHUAC, extraer solo el número
-    if ' - ' in str(resolucion):
-        return str(resolucion).split(' - ')[0].strip()
-    return str(resolucion).strip()
+    if ' - ' in resolucion:
+        return resolucion.split(' - ')[0].strip()
+    
+    return resolucion
 
 def procesar_ulinea_anahuac(df: pd.DataFrame) -> pd.DataFrame:
     """Procesa el DataFrame para ULINEA y ANAHUAC."""
@@ -143,9 +152,18 @@ def cargar_archivo(archivo, cliente_id: str) -> pd.DataFrame:
 def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id: str) -> bytes:
     """Genera un archivo Excel para descarga sin formato."""
     output = io.BytesIO()
+    
+    # Crear DataFrame solo con las columnas deseadas
+    df_descarga = pd.DataFrame(columns=columnas_salida.values())
+    
+    # Copiar datos de las columnas existentes
+    for col_origen, col_destino in columnas_salida.items():
+        if col_origen in df.columns:
+            df_descarga[col_destino] = df[col_origen]
+    
+    # Escribir el archivo
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Escribir DataFrame con las columnas especificadas
-        df[list(columnas_salida.keys())].to_excel(writer, index=False, sheet_name='Sheet1')
+        df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
         
         # Obtener la hoja de trabajo
         worksheet = writer.sheets['Sheet1']
