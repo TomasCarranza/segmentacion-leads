@@ -2,6 +2,41 @@ from datetime import datetime
 
 # Configuración de clientes
 CLIENTES = {
+    'CREXE': {
+        'nombre': 'CREXE',
+        'grupos': [
+            {
+                'nombre': 'Bienvenida',
+                'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
+                'columnas_salida': {
+                    'Nombre': 'Nombre',
+                    'Apellido': 'Apellido',
+                    'Email': 'Email',
+                    'Tel': 'Tel',
+                    'Programa': 'Programa',
+                    'Resolución': 'Resolución'
+                }
+            },
+            {
+                'nombre': 'Nurturing',
+                'resoluciones': ['11', '12', '13', '14', '15', '16', '17', '18', '19', '20'],
+                'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
+                'columnas_salida': {
+                    'Nombre': 'Nombre',
+                    'Apellido': 'Apellido',
+                    'Email': 'Email',
+                    'Tel': 'Tel',
+                    'Programa': 'Programa',
+                    'Resolución': 'Resolución'
+                }
+            }
+        ]
+    },
     'ULINEA': {
         'nombre': 'ULINEA',
         'grupos': [
