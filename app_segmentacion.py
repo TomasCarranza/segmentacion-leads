@@ -5,6 +5,11 @@ import io
 import tempfile
 import os
 import time
+from config_clientes import obtener_configuracion_cliente, obtener_lista_clientes
+from procesamiento import (
+    limpiar_nombre, limpiar_telefono, procesar_cliente_especifico,
+    cargar_archivo, generar_archivo_descarga
+)
 
 # ====================
 # CONFIGURACIÓN INICIAL
@@ -36,80 +41,28 @@ st.markdown("""
 """)
 
 # ====================
-# FUNCIONES PRINCIPALES
-# ====================
-def limpiar_nombre(nombre: str) -> str:
-    """Limpia y formatea el nombre."""
-    return str(nombre).split()[0].lower().capitalize() if pd.notna(nombre) else ''
-
-def limpiar_telefono(numero: str) -> str:
-    """Elimina caracteres no numéricos de teléfonos."""
-    return ''.join(filter(str.isdigit, str(numero))) if pd.notna(numero) else ''
-
-def cargar_archivos(uploaded_files: list) -> pd.DataFrame:
-    """Carga y concatena archivos Excel."""
-    dfs = []
-    for uploaded_file in uploaded_files:
-        try:
-            file_ext = uploaded_file.name.split('.')[-1].lower()
-            engine = 'xlrd' if file_ext == 'xls' else 'openpyxl'
-            
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_ext}") as tmp:
-                tmp.write(uploaded_file.getvalue())
-                df = pd.read_excel(tmp.name, engine=engine)
-                dfs.append(df)
-            os.unlink(tmp.name)
-        except Exception as e:
-            st.warning(f"⚠️ No se pudo procesar {uploaded_file.name}: {str(e)}")
-    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-
-def generar_archivo_descarga(df_filtrado: pd.DataFrame) -> bytes:
-    """Genera el archivo Excel con las columnas específicas para descarga"""
-    # Columnas base que necesitamos
-    columnas_base = {
-        'Nombre': '',
-        'Telefono': '',
-        'Email': '',
-        'Programa': '',
-        'Whatsapp': ''
-    }
-    
-    # Crear DataFrame solo con las columnas deseadas
-    df_descarga = pd.DataFrame(columns=columnas_base.keys())
-    
-    # Mapear las columnas del DataFrame procesado a las de salida
-    mapeo_columnas = {
-        'Nombre': 'Nombre',
-        'teltelefono': 'Telefono',
-        'emlMail': 'Email',
-        'Carrera Interes': 'Programa',
-        'TelWhatsapp': 'Whatsapp'
-    }
-    
-    # Copiar datos de las columnas existentes
-    for col_origen, col_destino in mapeo_columnas.items():
-        if col_origen in df_filtrado.columns:
-            df_descarga[col_destino] = df_filtrado[col_origen]
-    
-    # Generar el archivo en memoria
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_descarga.to_excel(writer, index=False)
-    return output.getvalue()
-
-# ====================
 # INTERFAZ DE USUARIO
 # ====================
 with st.sidebar:
     st.header("⚙️ **Configuración**")
     
-    # 1. Fecha de referencia
+    # 1. Selección de cliente
+    cliente_seleccionado = st.selectbox(
+        "🏢 **Seleccionar Cliente**",
+        options=obtener_lista_clientes(),
+        index=0
+    )
+    
+    # Obtener configuración del cliente
+    config_cliente = obtener_configuracion_cliente(cliente_seleccionado)
+    
+    # 2. Fecha de referencia
     fecha_referencia = st.date_input(
         "📅 Fecha base para segmentación",
         datetime.now()
     )
     
-    # 2. Opciones generales
+    # 3. Opciones generales
     with st.expander("🔧 **Opciones Generales**", expanded=True):
         eliminar_duplicados = st.checkbox(
             "Eliminar duplicados (por teléfono)",
@@ -121,69 +74,13 @@ with st.sidebar:
             value=True
         )
     
-    # 3. Editor de grupos
+    # 4. Editor de grupos
     st.header("✏️ **Editor de Grupos**")
     
-    # Inicializar grupos con los valores predeterminados solicitados
-    if 'grupos' not in st.session_state:
-        st.session_state.grupos = [
-            {
-                'nombre': "1 día antes",
-                'resoluciones': [
-                    "Se brinda información",
-                    "Se brinda información Whatsapp",
-                    "Volver a llamar"
-                ],
-                'dias_antes': 1,
-                'filtro_fecha': True,
-                'activo': True
-            },
-            {
-                'nombre': "2 días antes - Positivos",
-                'resoluciones': [
-                    "Analizando propuesta",
-                    "Oportunidad de venta",
-                    "En proceso de pago"
-                ],
-                'dias_antes': 2,
-                'filtro_fecha': True,
-                'activo': True
-            },
-            {
-                'nombre': "2 días antes - Negativos",
-                'resoluciones': [
-                    "Le parece caro",
-                    "Siguiente cohorte",
-                    "Motivos personales",
-                    "No es la oferta buscada"
-                ],
-                'dias_antes': 2,
-                'filtro_fecha': True,
-                'activo': True
-            },
-            {
-                'nombre': "Sin filtro de fecha",
-                'resoluciones': [
-                    "No contesta",
-                    "NotProcessed"
-                ],
-                'dias_antes': None,
-                'filtro_fecha': False,
-                'activo': True
-            },
-            {
-                'nombre': "1 día antes y día actual - Especiales",
-                'resoluciones': [
-                    "Spam - Desconoce haber solicitado informacion",
-                    "Telefono erroneo o fuera de servicio",
-                    "Pide no ser llamado",
-                    "Imposible contactar"
-                ],
-                'dias_antes': [0, 1],  # 0 es el día actual, 1 es un día antes
-                'filtro_fecha': True,
-                'activo': True
-            }
-        ]
+    # Inicializar grupos con la configuración del cliente
+    if 'grupos' not in st.session_state or st.session_state.cliente_actual != cliente_seleccionado:
+        st.session_state.grupos = config_cliente['grupos']
+        st.session_state.cliente_actual = cliente_seleccionado
     
     # Botón para añadir grupo
     if st.button("➕ Añadir Grupo", use_container_width=True):
@@ -235,12 +132,24 @@ with st.sidebar:
                 grupo['dias_antes'] = None
             
             st.markdown("**Resoluciones a incluir:**")
-            grupo['resoluciones'] = st.text_area(
-                "Una por línea",
-                value="\n".join(grupo['resoluciones']),
-                key=f"res_{i}",
-                height=100
-            ).split('\n')
+            if isinstance(grupo['resoluciones'], dict):
+                # Para UNAB Nurturing
+                st.info("Este grupo usa resoluciones por día de la semana")
+                for dia, resoluciones in grupo['resoluciones'].items():
+                    grupo['resoluciones'][dia] = st.text_area(
+                        f"Resoluciones para {dia}",
+                        value="\n".join(resoluciones),
+                        key=f"res_{i}_{dia}",
+                        height=100
+                    ).split('\n')
+            else:
+                # Para otros grupos
+                grupo['resoluciones'] = st.text_area(
+                    "Una por línea",
+                    value="\n".join(grupo['resoluciones']),
+                    key=f"res_{i}",
+                    height=100
+                ).split('\n')
             
             if st.button(f"❌ Eliminar grupo", key=f"del_{i}"):
                 st.session_state.grupos.pop(i)
@@ -250,8 +159,8 @@ with st.sidebar:
 # PROCESAMIENTO PRINCIPAL
 # ====================
 uploaded_files = st.file_uploader(
-    "📤 **Sube tus archivos Excel** (.xls o .xlsx)",
-    type=["xls", "xlsx"],
+    "📤 **Sube tus archivos**",
+    type=["xls", "xlsx", "csv"] if cliente_seleccionado == 'PK_CBA' else ["xls", "xlsx"],
     accept_multiple_files=True
 )
 
@@ -264,21 +173,21 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
         try:
             # 1. Carga de archivos
             status_text.info("📂 Cargando archivos...")
-            df_unificado = cargar_archivos(uploaded_files)
+            dfs = []
+            for uploaded_file in uploaded_files:
+                df = cargar_archivo(uploaded_file, cliente_seleccionado)
+                dfs.append(df)
+            df_unificado = pd.concat(dfs, ignore_index=True)
             progress_bar.progress(20)
             
             if df_unificado.empty:
                 st.error("❌ No se encontraron datos válidos")
                 st.stop()
             
-            # 2. Limpieza de datos
-            status_text.info("🧹 Limpiando datos...")
-            if 'Nombre' in df_unificado.columns:
-                df_unificado['Nombre'] = df_unificado['Nombre'].apply(limpiar_nombre)
-            if 'teltelefono' in df_unificado.columns:
-                df_unificado['teltelefono'] = df_unificado['teltelefono'].apply(limpiar_telefono)
-            if 'TelWhatsapp' in df_unificado.columns:
-                df_unificado['TelWhatsapp'] = df_unificado['TelWhatsapp'].apply(limpiar_telefono)
+            # 2. Procesamiento específico del cliente
+            status_text.info("🔄 Procesando datos específicos del cliente...")
+            df_unificado = procesar_cliente_especifico(df_unificado, cliente_seleccionado)
+            progress_bar.progress(30)
             
             # 3. Procesamiento de fechas
             if 'Fecha Insert Lead' in df_unificado.columns:
@@ -304,7 +213,13 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
             for i, grupo in enumerate(grupos_activos):
                 status_text.info(f"🔍 Procesando grupo: {grupo['nombre']} ({i+1}/{len(grupos_activos)})")
                 
-                df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
+                # Manejar resoluciones por día de la semana (UNAB Nurturing)
+                if isinstance(grupo['resoluciones'], dict):
+                    dia_actual = fecha_referencia.strftime('%A')  # Obtener día de la semana
+                    resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
+                    df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
+                else:
+                    df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
                 
                 if grupo['filtro_fecha'] and grupo['dias_antes'] is not None and 'Fecha_Lead' in df_unificado.columns:
                     if isinstance(grupo['dias_antes'], list):
@@ -319,14 +234,18 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                         df_filtrado = df_filtrado.drop_duplicates(subset=['teltelefono'])
                     
                     # Generar archivo con columnas específicas
-                    archivo_descarga = generar_archivo_descarga(df_filtrado)
+                    archivo_descarga = generar_archivo_descarga(
+                        df_filtrado,
+                        config_cliente['columnas_salida'],
+                        cliente_seleccionado
+                    )
                     
                     resultados.append({
                         'nombre': grupo['nombre'],
-                        'data': df_filtrado,  # Mantenemos todos los datos para la vista previa
-                        'archivo': archivo_descarga,  # Archivo ya formateado
+                        'data': df_filtrado,
+                        'archivo': archivo_descarga,
                         'registros': len(df_filtrado),
-                        'filename': f"{grupo['nombre']} {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
+                        'filename': f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                     })
                 
                 progress_bar.progress(40 + int(50 * (i+1)/len(grupos_activos)))
@@ -348,7 +267,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 st.download_button(
                     label="⬇️ Descargar registros omitidos",
                     data=output_invalidos.getvalue(),
-                    file_name=f"Registros_omitidos_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
+                    file_name=f"{cliente_seleccionado}_Registros_omitidos_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
             
@@ -394,20 +313,17 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
 # SECCIÓN DE AYUDA
 # ====================
 with st.expander("📚 **Guía de Uso**", expanded=False):
-    st.markdown("""
+    st.markdown(f"""
     ### 🎯 **Cómo usar esta herramienta**
-    1. **Configura los grupos** en la barra lateral
-    2. **Sube tus archivos Excel** (.xls o .xlsx)
-    3. **Ejecuta la segmentación**
-    4. **Descarga los reportes** individuales
+    1. **Selecciona el cliente** en la barra lateral
+    2. **Configura los grupos** según la configuración predeterminada
+    3. **Sube tus archivos** ({', '.join(['.xls', '.xlsx', '.csv'] if cliente_seleccionado == 'PK_CBA' else ['.xls', '.xlsx'])})
+    4. **Ejecuta la segmentación**
+    5. **Descarga los reportes** individuales
 
     ### 📂 **Formato de salida**
-    Los archivos descargados contendrán exactamente estas columnas:
-    - Nombre
-    - Telefono
-    - Email
-    - Programa
-    - Whatsapp
+    Los archivos descargados contendrán las columnas específicas para {config_cliente['nombre']}:
+    {', '.join(config_cliente['columnas_salida'].values())}
 
     ### ⚠️ **Registros omitidos**
     - Si hay registros con fechas inválidas, podrás descargarlos
