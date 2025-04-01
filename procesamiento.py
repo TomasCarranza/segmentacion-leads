@@ -60,9 +60,9 @@ def procesar_ulinea_anahuac(df: pd.DataFrame) -> pd.DataFrame:
     if 'Email' in df.columns:
         df['Email'] = df['Email'].apply(limpiar_email)
     
-    # Limpiar y estandarizar resoluciones
+    # Limpiar y estandarizar resoluciones (solo limpieza, sin filtrado)
     if 'Ultima Resolución' in df.columns:
-        df['Ultima Resolución'] = df['Ultima Resolución'].apply(limpiar_resolucion)
+        df['Ultima Resolución'] = df['Ultima Resolución'].apply(lambda x: str(x).strip() if pd.notna(x) else '')
     
     return df
 
@@ -161,28 +161,8 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
         if col_origen in df.columns:
             df_descarga[col_destino] = df[col_origen]
     
-    # Escribir el archivo
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        # Escribir sin índice y sin formato
+    # Escribir el archivo sin formato
+    with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:
         df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
-        
-        # Obtener la hoja de trabajo
-        worksheet = writer.sheets['Sheet1']
-        
-        # Eliminar formato de todas las celdas de manera segura
-        for row in worksheet.iter_rows():
-            for cell in row:
-                if hasattr(cell, 'font'):
-                    cell.font = None
-                if hasattr(cell, 'border'):
-                    cell.border = None
-                if hasattr(cell, 'fill'):
-                    cell.fill = None
-                if hasattr(cell, 'alignment'):
-                    cell.alignment = None
-                if hasattr(cell, 'protection'):
-                    cell.protection = None
-                if hasattr(cell, 'style'):
-                    cell.style = None
     
     return output.getvalue() 
