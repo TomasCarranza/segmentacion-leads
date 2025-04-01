@@ -133,24 +133,25 @@ with st.sidebar:
                 grupo['dias_antes'] = None
             
             st.markdown("**Resoluciones a incluir:**")
-            if isinstance(grupo['resoluciones'], dict):
-                # Para UNAB Nurturing
-                st.info("Este grupo usa resoluciones por día de la semana")
-                for dia, resoluciones in grupo['resoluciones'].items():
-                    grupo['resoluciones'][dia] = st.text_area(
-                        f"Resoluciones para {dia}",
-                        value="\n".join(resoluciones),
-                        key=f"res_{i}_{dia}",
+            if grupo['filtro_resolucion']:  # Solo mostrar si está activado el filtro
+                if isinstance(grupo['resoluciones'], dict):
+                    # Para UNAB Nurturing
+                    st.info("Este grupo usa resoluciones por día de la semana")
+                    for dia, resoluciones in grupo['resoluciones'].items():
+                        grupo['resoluciones'][dia] = st.text_area(
+                            f"Resoluciones para {dia}",
+                            value="\n".join(resoluciones),
+                            key=f"res_{i}_{dia}",
+                            height=100
+                        ).split('\n')
+                else:
+                    # Para otros grupos
+                    grupo['resoluciones'] = st.text_area(
+                        "Una por línea",
+                        value="\n".join(grupo['resoluciones']),
+                        key=f"res_{i}",
                         height=100
                     ).split('\n')
-            else:
-                # Para otros grupos
-                grupo['resoluciones'] = st.text_area(
-                    "Una por línea",
-                    value="\n".join(grupo['resoluciones']),
-                    key=f"res_{i}",
-                    height=100
-                ).split('\n')
             
             if st.button(f"❌ Eliminar grupo", key=f"del_{i}"):
                 st.session_state.grupos.pop(i)
@@ -282,7 +283,6 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 )
             
             if resultados:
-                st.balloons()
                 st.success(f"✅ ¡Procesamiento completado! ({len(resultados)} grupos generados)")
                 
                 # Métricas resumidas
@@ -302,6 +302,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                                 hide_index=True
                             )
                         
+                        # Usar st.download_button con on_click para evitar recarga
                         st.download_button(
                             label=f"⬇️ Descargar {resultado['nombre']}",
                             data=resultado['archivo'],
@@ -330,10 +331,6 @@ with st.expander("📚 **Guía de Uso**", expanded=False):
     3. **Sube tus archivos** ({', '.join(['.xls', '.xlsx', '.csv'] if cliente_seleccionado == 'PK_CBA' else ['.xls', '.xlsx'])})
     4. **Ejecuta la segmentación**
     5. **Descarga los reportes** individuales
-
-    ### 📂 **Formato de salida**
-    Los archivos descargados contendrán las columnas específicas para {config_cliente['nombre']}:
-    {', '.join(config_cliente['columnas_salida'].values())}
 
     ### ⚠️ **Registros omitidos**
     - Si hay registros con fechas inválidas, podrás descargarlos

@@ -43,8 +43,22 @@ def procesar_pk_cba(df: pd.DataFrame) -> pd.DataFrame:
             'Licenciatura en Psicopedagogía': 3
         }
         df['Cod_Programa'] = df['Carrera de Interes'].map(
-            lambda x: mapeo_programas.get(x, 4)
+            lambda x: mapeo_programas.get(str(x).strip(), 4)
         )
+    
+    # Asegurar que todas las columnas necesarias existan
+    columnas_requeridas = {
+        'Nombre': 'Nombre',
+        'Apellido': 'Apellido',
+        'e-Mail': 'Email',
+        'Móvil': 'Tel',
+        'Carrera de Interes': 'Programa',
+        'Cod_Programa': 'Cod_Programa'
+    }
+    
+    for col_origen, col_destino in columnas_requeridas.items():
+        if col_origen not in df.columns:
+            df[col_origen] = ''  # Agregar columna vacía si no existe
     
     return df
 
@@ -63,10 +77,12 @@ def cargar_archivo(uploaded_file, cliente_id: str) -> pd.DataFrame:
         
         if cliente_id == 'PK_CBA' and file_ext == 'csv':
             # Intentar diferentes codificaciones
-            codificaciones = ['utf-8', 'latin1', 'iso-8859-1']
+            codificaciones = ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']
             for codificacion in codificaciones:
                 try:
-                    return pd.read_csv(uploaded_file, encoding=codificacion)
+                    df = pd.read_csv(uploaded_file, encoding=codificacion)
+                    if not df.empty and 'Nombre' in df.columns:
+                        return df
                 except UnicodeDecodeError:
                     continue
             # Si ninguna codificación funciona, intentar con la codificación por defecto
@@ -91,4 +107,13 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_descarga.to_excel(writer, index=False)
+        # Asegurar que no haya formato
+        worksheet = writer.sheets['Sheet1']
+        for row in worksheet.iter_rows():
+            for cell in row:
+                cell.font = None
+                cell.border = None
+                cell.fill = None
+                cell.alignment = None
+                cell.number_format = None
     return output.getvalue() 
