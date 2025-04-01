@@ -68,6 +68,11 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
         return procesar_ulinea_anahuac(df)
     elif cliente_id == 'PK_CBA':
         return procesar_pk_cba(df)
+    elif cliente_id == 'UNAB':
+        # Asegurar que la columna Resolución exista
+        if 'Resolución' not in df.columns:
+            df['Resolución'] = ''
+        return df
     return df
 
 def cargar_archivo(uploaded_file, cliente_id: str) -> pd.DataFrame:
@@ -116,4 +121,6 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
                 cell.fill = None
                 cell.alignment = None
                 cell.number_format = None
+                cell.protection = None
+                cell.style = None
     return output.getvalue() 

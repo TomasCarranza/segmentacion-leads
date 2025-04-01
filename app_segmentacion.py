@@ -219,12 +219,15 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 if isinstance(grupo['resoluciones'], dict):
                     dia_actual = fecha_referencia.strftime('%A')  # Obtener día de la semana
                     resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
-                    df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
+                    if grupo['filtro_resolucion'] and resoluciones_dia:
+                        df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
+                    else:
+                        df_filtrado = df_unificado.copy()
                     
                     # Formato especial para UNAB Nurturing
                     nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                 else:
-                    if grupo['filtro_resolucion']:
+                    if grupo['filtro_resolucion'] and grupo['resoluciones']:
                         df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
                     else:
                         df_filtrado = df_unificado.copy()  # No filtrar por resolución
