@@ -115,6 +115,10 @@ with st.sidebar:
             )
             
             if grupo['filtro_fecha']:
+                # Inicializar dias_antes si no existe
+                if 'dias_antes' not in grupo:
+                    grupo['dias_antes'] = 1
+                
                 if st.checkbox("Usar múltiples días", value=isinstance(grupo['dias_antes'], list), key=f"multidias_{i}"):
                     grupo['dias_antes'] = st.multiselect(
                         "Días a incluir",

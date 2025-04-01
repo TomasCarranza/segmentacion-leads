@@ -9,6 +9,8 @@ CLIENTES = {
                 'nombre': 'Bienvenida',
                 'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
                 'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -27,6 +29,8 @@ CLIENTES = {
                 'nombre': 'Bienvenida',
                 'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
                 'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -45,6 +49,8 @@ CLIENTES = {
                 'nombre': 'Bienvenida',
                 'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
                 'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -64,6 +70,8 @@ CLIENTES = {
                     'Friday': ['21', '22', '23', '24', '25']
                 },
                 'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
@@ -82,6 +90,8 @@ CLIENTES = {
                 'nombre': 'Bienvenida',
                 'resoluciones': ['1', '2', '3', '4', '5'],
                 'filtro_resolucion': True,
+                'filtro_fecha': True,
+                'dias_antes': 1,
                 'columnas_salida': {
                     'Nombre': 'Nombre',
                     'Apellido': 'Apellido',
