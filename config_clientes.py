@@ -87,8 +87,8 @@ CLIENTES = {
         'grupos': [
             {
                 'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-                'filtro_resolucion': True,
+                'resoluciones': None,  # No filtrar por resoluciones
+                'filtro_resolucion': False,
                 'filtro_fecha': True,
                 'dias_antes': [0, 1],
                 'columnas_salida': {
@@ -128,7 +128,7 @@ CLIENTES = {
         'grupos': [
             {
                 'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5'],
+                'resoluciones': ['1', '2', '3', '4', '5'],  # Mantener números para ULINEA y ANAHUAC
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
                 'dias_antes': 1,
@@ -148,7 +148,7 @@ CLIENTES = {
         'grupos': [
             {
                 'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5'],
+                'resoluciones': ['1', '2', '3', '4', '5'],  # Mantener números para ULINEA y ANAHUAC
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
                 'dias_antes': 1,
@@ -168,7 +168,7 @@ CLIENTES = {
         'grupos': [
             {
                 'nombre': 'Bienvenida',
-                'resoluciones': ['1', '2', '3', '4', '5'],
+                'resoluciones': ['1', '2', '3', '4', '5'],  # Mantener números para PK CBA
                 'filtro_resolucion': True,
                 'filtro_fecha': True,
                 'dias_antes': 1,

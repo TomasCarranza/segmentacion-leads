@@ -214,52 +214,58 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
             for i, grupo in enumerate(grupos_activos):
                 status_text.info(f"🔍 Procesando grupo: {grupo['nombre']} ({i+1}/{len(grupos_activos)})")
                 
-                # Manejar resoluciones por día de la semana (UNAB Nurturing)
-                if isinstance(grupo['resoluciones'], dict):
-                    dia_actual = fecha_referencia.strftime('%A')  # Obtener día de la semana
-                    resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
-                    if grupo['filtro_resolucion'] and resoluciones_dia:
-                        df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
-                    else:
-                        df_filtrado = pd.DataFrame()  # No mostrar nada si no hay resoluciones para el día
-                    
-                    # Formato especial para UNAB Nurturing
-                    nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
-                else:
-                    if grupo['filtro_resolucion'] and grupo['resoluciones']:
-                        df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
-                    else:
-                        df_filtrado = df_unificado.copy()  # No filtrar por resolución
-                    
-                    # Formato estándar para otros clientes
-                    nombre_archivo = f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
-                
-                if grupo['filtro_fecha'] and grupo['dias_antes'] is not None and 'Fecha_Lead' in df_unificado.columns:
+                # Aplicar filtros según configuración
+                if grupo['filtro_fecha']:
                     if isinstance(grupo['dias_antes'], list):
-                        fechas = [fecha_referencia - timedelta(days=d) for d in grupo['dias_antes']]
-                        df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].isin(fechas)]
+                        # Para múltiples días
+                        fechas_validas = []
+                        for dias in grupo['dias_antes']:
+                            fecha_limite = fecha_referencia - pd.Timedelta(days=dias)
+                            fechas_validas.append(fecha_limite)
+                        df_filtrado = df_unificado[df_unificado['Fecha Insert Lead'].isin(fechas_validas)]
                     else:
-                        fecha_objetivo = fecha_referencia - timedelta(days=grupo['dias_antes'])
-                        df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'] == fecha_objetivo]
+                        # Para un solo día
+                        fecha_limite = fecha_referencia - pd.Timedelta(days=grupo['dias_antes'])
+                        df_filtrado = df_unificado[df_unificado['Fecha Insert Lead'] == fecha_limite]
+                else:
+                    df_filtrado = df_unificado.copy()
                 
+                # Aplicar filtro de resoluciones si está activado
+                if grupo['filtro_resolucion'] and grupo['resoluciones']:
+                    if isinstance(grupo['resoluciones'], dict):
+                        # Para UNAB Nurturing
+                        dia_actual = fecha_referencia.strftime('%A')
+                        resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
+                        if resoluciones_dia:
+                            df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(resoluciones_dia)]
+                    else:
+                        # Para otros grupos
+                        df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(grupo['resoluciones'])]
+                
+                # Generar archivo de descarga
                 if not df_filtrado.empty:
-                    if eliminar_duplicados and 'teltelefono' in df_filtrado.columns:
-                        df_filtrado = df_filtrado.drop_duplicates(subset=['teltelefono'])
+                    # Formato especial para UNAB Nurturing
+                    if isinstance(grupo['resoluciones'], dict):
+                        nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
+                    else:
+                        # Formato estándar para otros clientes
+                        nombre_archivo = f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                     
-                    # Generar archivo con columnas específicas
-                    archivo_descarga = generar_archivo_descarga(
+                    # Generar archivo sin formato
+                    archivo_bytes = generar_archivo_descarga(
                         df_filtrado,
-                        config_cliente['columnas_salida'],
+                        grupo['columnas_salida'],
                         cliente_seleccionado
                     )
                     
-                    resultados.append({
-                        'nombre': grupo['nombre'],
-                        'data': df_filtrado,
-                        'archivo': archivo_descarga,
-                        'registros': len(df_filtrado),
-                        'filename': nombre_archivo
-                    })
+                    # Botón de descarga
+                    st.download_button(
+                        label=f"📥 Descargar {grupo['nombre']}",
+                        data=archivo_bytes,
+                        file_name=nombre_archivo,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"download_{i}"
+                    )
                 
                 progress_bar.progress(40 + int(50 * (i+1)/len(grupos_activos)))
             
