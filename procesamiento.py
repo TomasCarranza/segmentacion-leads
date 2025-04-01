@@ -163,19 +163,26 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     
     # Escribir el archivo
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        # Escribir sin índice y sin formato
         df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
         
         # Obtener la hoja de trabajo
         worksheet = writer.sheets['Sheet1']
         
-        # Eliminar formato de todas las celdas
+        # Eliminar formato de todas las celdas de manera segura
         for row in worksheet.iter_rows():
             for cell in row:
-                cell.font = None
-                cell.border = None
-                cell.fill = None
-                cell.alignment = None
-                cell.protection = None
-                cell.style = None
+                if hasattr(cell, 'font'):
+                    cell.font = None
+                if hasattr(cell, 'border'):
+                    cell.border = None
+                if hasattr(cell, 'fill'):
+                    cell.fill = None
+                if hasattr(cell, 'alignment'):
+                    cell.alignment = None
+                if hasattr(cell, 'protection'):
+                    cell.protection = None
+                if hasattr(cell, 'style'):
+                    cell.style = None
     
     return output.getvalue() 
