@@ -101,16 +101,17 @@ with st.sidebar:
                 key=f"nombre_{i}"
             )
             
-            grupo['activo'] = st.checkbox(
-                "Activo",
-                value=grupo['activo'],
-                key=f"activo_{i}"
-            )
-            
             grupo['filtro_fecha'] = st.checkbox(
                 "Filtrar por fecha",
                 value=grupo.get('filtro_fecha', True),
                 key=f"filtro_fecha_{i}"
+            )
+            
+            # Agregar opción para filtrar por resolución
+            grupo['filtro_resolucion'] = st.checkbox(
+                "Filtrar por resolución",
+                value=grupo.get('filtro_resolucion', True),
+                key=f"filtro_resolucion_{i}"
             )
             
             if grupo['filtro_fecha']:
@@ -208,7 +209,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
             
             # 4. Procesamiento por grupos
             resultados = []
-            grupos_activos = [g for g in st.session_state.grupos if g['activo']]
+            grupos_activos = st.session_state.grupos  # Ya no filtramos por activo
             
             for i, grupo in enumerate(grupos_activos):
                 status_text.info(f"🔍 Procesando grupo: {grupo['nombre']} ({i+1}/{len(grupos_activos)})")
@@ -218,8 +219,17 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     dia_actual = fecha_referencia.strftime('%A')  # Obtener día de la semana
                     resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
                     df_filtrado = df_unificado[df_unificado['Resolución'].isin(resoluciones_dia)]
+                    
+                    # Formato especial para UNAB Nurturing
+                    nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                 else:
-                    df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
+                    if grupo['filtro_resolucion']:
+                        df_filtrado = df_unificado[df_unificado['Resolución'].isin(grupo['resoluciones'])]
+                    else:
+                        df_filtrado = df_unificado.copy()  # No filtrar por resolución
+                    
+                    # Formato estándar para otros clientes
+                    nombre_archivo = f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
                 
                 if grupo['filtro_fecha'] and grupo['dias_antes'] is not None and 'Fecha_Lead' in df_unificado.columns:
                     if isinstance(grupo['dias_antes'], list):
@@ -245,7 +255,7 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                         'data': df_filtrado,
                         'archivo': archivo_descarga,
                         'registros': len(df_filtrado),
-                        'filename': f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
+                        'filename': nombre_archivo
                     })
                 
                 progress_bar.progress(40 + int(50 * (i+1)/len(grupos_activos)))

@@ -62,6 +62,14 @@ def cargar_archivo(uploaded_file, cliente_id: str) -> pd.DataFrame:
         file_ext = uploaded_file.name.split('.')[-1].lower()
         
         if cliente_id == 'PK_CBA' and file_ext == 'csv':
+            # Intentar diferentes codificaciones
+            codificaciones = ['utf-8', 'latin1', 'iso-8859-1']
+            for codificacion in codificaciones:
+                try:
+                    return pd.read_csv(uploaded_file, encoding=codificacion)
+                except UnicodeDecodeError:
+                    continue
+            # Si ninguna codificación funciona, intentar con la codificación por defecto
             return pd.read_csv(uploaded_file)
         
         engine = 'xlrd' if file_ext == 'xls' else 'openpyxl'

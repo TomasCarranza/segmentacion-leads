@@ -6,7 +6,7 @@ CLIENTES = {
         'nombre': 'CREXE',
         'grupos': [
             {
-                'nombre': "1 día antes",
+                'nombre': "Se brinda info",
                 'resoluciones': [
                     "Se brinda información",
                     "Se brinda información Whatsapp",
@@ -14,10 +14,11 @@ CLIENTES = {
                 ],
                 'dias_antes': 1,
                 'filtro_fecha': True,
+                'filtro_resolucion': True,
                 'activo': True
             },
             {
-                'nombre': "2 días antes - Positivos",
+                'nombre': "Analizando propuesta",
                 'resoluciones': [
                     "Analizando propuesta",
                     "Oportunidad de venta",
@@ -25,10 +26,11 @@ CLIENTES = {
                 ],
                 'dias_antes': 2,
                 'filtro_fecha': True,
+                'filtro_resolucion': True,
                 'activo': True
             },
             {
-                'nombre': "2 días antes - Negativos",
+                'nombre': "Le parece caro",
                 'resoluciones': [
                     "Le parece caro",
                     "Siguiente cohorte",
@@ -37,20 +39,22 @@ CLIENTES = {
                 ],
                 'dias_antes': 2,
                 'filtro_fecha': True,
+                'filtro_resolucion': True,
                 'activo': True
             },
             {
-                'nombre': "Sin filtro de fecha",
+                'nombre': "No contesta - No procesados",
                 'resoluciones': [
                     "No contesta",
                     "NotProcessed"
                 ],
                 'dias_antes': None,
                 'filtro_fecha': False,
+                'filtro_resolucion': True,
                 'activo': True
             },
             {
-                'nombre': "1 día antes y día actual - Especiales",
+                'nombre': "Spam",
                 'resoluciones': [
                     "Spam - Desconoce haber solicitado informacion",
                     "Telefono erroneo o fuera de servicio",
@@ -59,6 +63,7 @@ CLIENTES = {
                 ],
                 'dias_antes': [0, 1],
                 'filtro_fecha': True,
+                'filtro_resolucion': True,
                 'activo': True
             }
         ],
@@ -131,6 +136,7 @@ CLIENTES = {
                 'resoluciones': ["*"],  # Cualquier resolución
                 'dias_antes': None,
                 'filtro_fecha': False,
+                'filtro_resolucion': False,  # Por defecto no filtrar por resolución
                 'activo': True
             }
         ],
@@ -154,6 +160,7 @@ CLIENTES = {
                 'resoluciones': ["*"],  # Cualquier resolución
                 'dias_antes': None,
                 'filtro_fecha': False,
+                'filtro_resolucion': False,  # Por defecto no filtrar por resolución
                 'activo': True
             }
         ],
