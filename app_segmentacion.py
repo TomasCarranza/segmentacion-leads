@@ -193,17 +193,32 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
             
             # 3. Procesamiento de fechas
             if 'Fecha Insert Lead' in df_unificado.columns:
-                df_unificado['Fecha_Lead'] = pd.to_datetime(
-                    df_unificado['Fecha Insert Lead'], 
-                    format='%d-%m-%Y %H:%M:%S',
-                    errors='coerce'
-                ).dt.date
+                # Intentar diferentes formatos de fecha
+                try:
+                    df_unificado['Fecha_Lead'] = pd.to_datetime(
+                        df_unificado['Fecha Insert Lead'], 
+                        format='%d-%m-%Y %H:%M:%S',
+                        errors='coerce'
+                    )
+                except:
+                    try:
+                        df_unificado['Fecha_Lead'] = pd.to_datetime(
+                            df_unificado['Fecha Insert Lead'], 
+                            format='%Y-%m-%d %H:%M:%S',
+                            errors='coerce'
+                        )
+                    except:
+                        df_unificado['Fecha_Lead'] = pd.to_datetime(
+                            df_unificado['Fecha Insert Lead'], 
+                            errors='coerce'
+                        )
                 
                 # Identificar registros con fechas inválidas
                 registros_invalidos = df_unificado[df_unificado['Fecha_Lead'].isna()].copy()
                 n_invalidos = len(registros_invalidos)
                 
                 if n_invalidos > 0:
+                    st.warning(f"⚠️ Se omitieron {n_invalidos} registros con fechas no reconocidas")
                     df_unificado = df_unificado.dropna(subset=['Fecha_Lead'])
             
             progress_bar.progress(40)
@@ -216,6 +231,8 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 status_text.info(f"🔍 Procesando grupo: {grupo['nombre']} ({i+1}/{len(grupos_activos)})")
                 
                 # Aplicar filtros según configuración
+                df_filtrado = df_unificado.copy()
+                
                 if grupo['filtro_fecha']:
                     if isinstance(grupo['dias_antes'], list):
                         # Para múltiples días
@@ -223,28 +240,28 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                         for dias in grupo['dias_antes']:
                             fecha_limite = fecha_referencia - pd.Timedelta(days=dias)
                             fechas_validas.append(fecha_limite)
-                        df_filtrado = df_unificado[df_unificado['Fecha Insert Lead'].isin(fechas_validas)]
+                        df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].dt.date.isin(fechas_validas)]
                     else:
                         # Para un solo día
                         fecha_limite = fecha_referencia - pd.Timedelta(days=grupo['dias_antes'])
-                        df_filtrado = df_unificado[df_unificado['Fecha Insert Lead'] == fecha_limite]
-                else:
-                    df_filtrado = df_unificado.copy()
+                        df_filtrado = df_filtrado[df_filtrado['Fecha_Lead'].dt.date == fecha_limite]
                 
                 # Filtrar por resolución si está activo
                 if grupo['filtro_resolucion'] and grupo['resoluciones'] is not None:
-                    if isinstance(grupo['resoluciones'], dict):
-                        # Para UNAB Nurturing
-                        dia_actual = fecha_referencia.strftime('%A')
-                        resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
-                        df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(resoluciones_dia)]
-                    else:
-                        # Para otros grupos
-                        df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(grupo['resoluciones'])]
+                    col_resolucion = 'Ultima Resolución' if cliente_seleccionado in ['ULINEA', 'ANAHUAC'] else 'Resolución'
+                    if col_resolucion in df_filtrado.columns:
+                        if isinstance(grupo['resoluciones'], dict):
+                            # Para UNAB Nurturing
+                            dia_actual = fecha_referencia.strftime('%A')
+                            resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
+                            df_filtrado = df_filtrado[df_filtrado[col_resolucion].isin(resoluciones_dia)]
+                        else:
+                            # Para otros grupos
+                            df_filtrado = df_filtrado[df_filtrado[col_resolucion].isin(grupo['resoluciones'])]
                 
                 # Si no hay registros después del filtrado, mostrar mensaje
                 if len(df_filtrado) == 0:
-                    st.warning("📭 No se generaron resultados. Ajusta tus criterios de filtrado.")
+                    st.warning(f"📭 No se generaron resultados para {grupo['nombre']}. Ajusta tus criterios de filtrado.")
                     continue
                 
                 # Generar archivo de descarga
