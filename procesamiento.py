@@ -130,35 +130,40 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
             'Email': 'Email',
             'Tel': 'Tel',
             'Programa': 'Programa',
-            'Resolución': 'Ultima Resolución'
+            'Resolución': 'Ultima Resolución',
+            'Fecha Insert Lead': 'Fecha Insert Lead'
         },
         'ANAHUAC': {
             'Nombre': 'Nombre',
             'Email': 'Email',
             'Tel': 'Tel',
             'Programa': 'Programa',
-            'Resolución': 'Ultima Resolución'
+            'Resolución': 'Ultima Resolución',
+            'Fecha Insert Lead': 'Fecha Insert Lead'
         },
         'PK_CBA': {
             'Nombre': 'Nombre',
             'Email': 'e-Mail',
             'Tel': 'Móvil',
             'Programa': 'Carrera de Interes',
-            'Resolución': 'Resolución'
+            'Resolución': 'Resolución',
+            'Fecha Insert Lead': 'Fecha Insert Lead'
         },
         'CREXE': {
             'Nombre': 'Nombre',
             'Email': 'Email',
             'Tel': 'Tel',
             'Programa': 'Programa',
-            'Resolución': 'Resolución'
+            'Resolución': 'Resolución',
+            'Fecha Insert Lead': 'Fecha Insert Lead'
         },
         'UNAB': {
             'Nombre': 'Nombre',
             'Email': 'Email',
             'Tel': 'Tel',
             'Programa': 'Programa',
-            'Resolución': 'Resolución'
+            'Resolución': 'Resolución',
+            'Fecha Insert Lead': 'Fecha Insert Lead'
         }
     }
     
@@ -181,8 +186,31 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
                 df_estandarizado[col_destino] = df_procesado[col_origen].apply(limpiar_programa)
             elif col_destino == 'Resolución':
                 df_estandarizado[col_destino] = df_procesado[col_origen].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+            elif col_destino == 'Fecha Insert Lead':
+                # Intentar diferentes formatos de fecha
+                try:
+                    df_estandarizado['Fecha_Lead'] = pd.to_datetime(
+                        df_procesado[col_origen],
+                        format='%d-%m-%Y %H:%M:%S',
+                        errors='coerce'
+                    )
+                except:
+                    try:
+                        df_estandarizado['Fecha_Lead'] = pd.to_datetime(
+                            df_procesado[col_origen],
+                            format='%Y-%m-%d %H:%M:%S',
+                            errors='coerce'
+                        )
+                    except:
+                        df_estandarizado['Fecha_Lead'] = pd.to_datetime(
+                            df_procesado[col_origen],
+                            errors='coerce'
+                        )
         else:
-            df_estandarizado[col_destino] = ''
+            if col_destino == 'Fecha Insert Lead':
+                df_estandarizado['Fecha_Lead'] = pd.NaT
+            else:
+                df_estandarizado[col_destino] = ''
     
     return df_estandarizado
 
