@@ -120,24 +120,57 @@ def procesar_unab(df: pd.DataFrame) -> pd.DataFrame:
 
 def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFrame:
     """Procesa el DataFrame según el cliente específico."""
-    # Primero procesar según el cliente
+    # Crear una copia del DataFrame para no modificar el original
+    df_procesado = df.copy()
+    
+    # Mapeo de columnas estándar
+    mapeo_estandar = {
+        'Email': ['Email', 'e-Mail', 'Correo', 'email', 'e-mail', 'E-mail'],
+        'Tel': ['Tel', 'Teléfono', 'Móvil', 'Celular', 'tel', 'telefono', 'Telefono'],
+        'Programa': ['Programa', 'Carrera de Interes', 'Carrera', 'programa', 'carrera']
+    }
+    
+    # Encontrar y renombrar columnas según el mapeo
+    for col_destino, alternativas in mapeo_estandar.items():
+        for alt in alternativas:
+            if alt in df_procesado.columns:
+                df_procesado[col_destino] = df_procesado[alt]
+                break
+    
+    # Procesar según el cliente
     if cliente_id in ['ULINEA', 'ANAHUAC']:
-        df = procesar_ulinea_anahuac(df)
+        if 'Nombre' in df_procesado.columns:
+            df_procesado['Nombre'] = df_procesado['Nombre'].apply(limpiar_nombre)
+        if 'Tel' in df_procesado.columns:
+            df_procesado['Tel'] = df_procesado['Tel'].apply(limpiar_telefono)
+        if 'Email' in df_procesado.columns:
+            df_procesado['Email'] = df_procesado['Email'].apply(limpiar_email)
+        if 'Ultima Resolución' in df_procesado.columns:
+            df_procesado['Resolución'] = df_procesado['Ultima Resolución'].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+    
     elif cliente_id == 'PK_CBA':
-        df = procesar_pk_cba(df)
-    elif cliente_id == 'UNAB':
-        df = procesar_unab(df)
+        if 'Nombre' in df_procesado.columns:
+            df_procesado['Nombre'] = df_procesado['Nombre'].apply(limpiar_nombre)
+        if 'Móvil' in df_procesado.columns:
+            df_procesado['Tel'] = df_procesado['Móvil'].apply(limpiar_telefono)
+        if 'e-Mail' in df_procesado.columns:
+            df_procesado['Email'] = df_procesado['e-Mail'].apply(limpiar_email)
+        if 'Carrera de Interes' in df_procesado.columns:
+            df_procesado['Programa'] = df_procesado['Carrera de Interes'].apply(limpiar_programa)
     
-    # Asegurar que la columna de resolución exista y esté limpia
-    col_resolucion = 'Ultima Resolución' if cliente_id in ['ULINEA', 'ANAHUAC'] else 'Resolución'
-    if col_resolucion in df.columns:
-        # Para CREXE, mantener el texto completo de la resolución
-        if cliente_id == 'CREXE':
-            df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
-        else:
-            df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+    elif cliente_id == 'UNAB' or cliente_id == 'CREXE':
+        if 'Nombre' in df_procesado.columns:
+            df_procesado['Nombre'] = df_procesado['Nombre'].apply(limpiar_nombre)
+        if 'Tel' in df_procesado.columns:
+            df_procesado['Tel'] = df_procesado['Tel'].apply(limpiar_telefono)
+        if 'Email' in df_procesado.columns:
+            df_procesado['Email'] = df_procesado['Email'].apply(limpiar_email)
+        if 'Programa' in df_procesado.columns:
+            df_procesado['Programa'] = df_procesado['Programa'].apply(limpiar_programa)
+        if 'Resolución' in df_procesado.columns:
+            df_procesado['Resolución'] = df_procesado['Resolución'].apply(lambda x: str(x).strip() if pd.notna(x) else '')
     
-    return df
+    return df_procesado
 
 def cargar_archivo(archivo, cliente_id: str) -> pd.DataFrame:
     """Carga y procesa un archivo según el cliente."""
@@ -164,56 +197,18 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     """Genera un archivo Excel para descarga sin formato."""
     output = io.BytesIO()
     
-    # Crear DataFrame solo con las columnas deseadas
-    df_descarga = pd.DataFrame()
+    # Crear DataFrame de salida con las columnas solicitadas
+    df_salida = pd.DataFrame()
     
-    # Mapeo de columnas según el cliente
-    mapeo_columnas = {
-        'Nombre': ['Nombre', 'nombre'],
-        'Apellido': ['Apellido', 'apellido'],
-        'Email': ['Email', 'e-Mail', 'Correo', 'email', 'e-mail', 'E-mail'],
-        'Tel': ['Tel', 'Teléfono', 'Móvil', 'Celular', 'tel', 'telefono', 'Telefono'],
-        'Programa': ['Programa', 'Carrera de Interes', 'Carrera', 'programa', 'carrera'],
-        'Resolución': ['Resolución', 'Ultima Resolución', 'resolucion', 'ultima resolucion']
-    }
-    
-    # Imprimir columnas disponibles para debug
-    print("Columnas en el DataFrame:", df.columns.tolist())
-    print("Columnas solicitadas:", columnas_salida)
-    
-    # Copiar datos de las columnas existentes
+    # Copiar las columnas solicitadas
     for col_origen, col_destino in columnas_salida.items():
-        # Buscar la columna en el DataFrame
-        columna_encontrada = None
-        
-        # Primero buscar coincidencia exacta
         if col_origen in df.columns:
-            columna_encontrada = col_origen
+            df_salida[col_destino] = df[col_origen]
         else:
-            # Buscar en el mapeo de columnas
-            if col_origen in mapeo_columnas:
-                for col_alt in mapeo_columnas[col_origen]:
-                    if col_alt in df.columns:
-                        columna_encontrada = col_alt
-                        break
-            # Si no se encuentra, buscar por nombre similar
-            if not columna_encontrada:
-                for col in df.columns:
-                    if col.lower().replace(" ", "") == col_origen.lower().replace(" ", ""):
-                        columna_encontrada = col
-                        break
-        
-        print(f"Buscando columna {col_origen} -> encontrada: {columna_encontrada}")
-        
-        if columna_encontrada:
-            df_descarga[col_destino] = df[columna_encontrada]
-        else:
-            # Si no se encuentra la columna, crear una columna vacía
-            df_descarga[col_destino] = ''
-            print(f"No se encontró la columna {col_origen}")
+            df_salida[col_destino] = ''
     
     # Escribir el archivo sin formato
     with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:
-        df_descarga.to_excel(writer, index=False, sheet_name='Sheet1')
+        df_salida.to_excel(writer, index=False, sheet_name='Sheet1')
     
     return output.getvalue() 
