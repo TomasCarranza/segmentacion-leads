@@ -165,12 +165,15 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     output = io.BytesIO()
     
     # Crear DataFrame solo con las columnas deseadas
-    df_descarga = pd.DataFrame(columns=columnas_salida.values())
+    df_descarga = pd.DataFrame()
     
     # Copiar datos de las columnas existentes
     for col_origen, col_destino in columnas_salida.items():
         if col_origen in df.columns:
             df_descarga[col_destino] = df[col_origen]
+        else:
+            # Si la columna no existe, crear una columna vacía
+            df_descarga[col_destino] = ''
     
     # Escribir el archivo sin formato
     with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:

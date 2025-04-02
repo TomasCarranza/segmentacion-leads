@@ -271,14 +271,22 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                     cliente_seleccionado
                 )
                 
-                # Botón de descarga
-                st.download_button(
-                    label=f"📥 Descargar {grupo['nombre']}",
-                    data=archivo_bytes,
-                    file_name=f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"download_{i}"
-                )
+                # Mostrar vista previa y botón de descarga en un expander
+                with st.expander(f"📊 {grupo['nombre']} ({len(df_filtrado)} registros)", expanded=True):
+                    # Vista previa de los datos
+                    st.dataframe(
+                        df_filtrado[list(grupo['columnas_salida'].values())].head(),
+                        use_container_width=True
+                    )
+                    
+                    # Botón de descarga
+                    st.download_button(
+                        label=f"📥 Descargar {grupo['nombre']}",
+                        data=archivo_bytes,
+                        file_name=f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"download_{i}"
+                    )
                 
                 progress_bar.progress(40 + int(50 * (i+1)/len(grupos_activos)))
             
