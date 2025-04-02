@@ -167,13 +167,30 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     # Crear DataFrame solo con las columnas deseadas
     df_descarga = pd.DataFrame()
     
+    # Mapeo de columnas según el cliente
+    mapeo_columnas = {
+        'Email': ['Email', 'e-Mail', 'Correo'],
+        'Tel': ['Tel', 'Teléfono', 'Móvil', 'Celular'],
+        'Programa': ['Programa', 'Carrera de Interes', 'Carrera']
+    }
+    
     # Copiar datos de las columnas existentes
     for col_origen, col_destino in columnas_salida.items():
         if col_origen in df.columns:
             df_descarga[col_destino] = df[col_origen]
         else:
-            # Si la columna no existe, crear una columna vacía
-            df_descarga[col_destino] = ''
+            # Buscar columnas alternativas
+            encontrado = False
+            if col_origen in mapeo_columnas:
+                for col_alt in mapeo_columnas[col_origen]:
+                    if col_alt in df.columns:
+                        df_descarga[col_destino] = df[col_alt]
+                        encontrado = True
+                        break
+            
+            if not encontrado:
+                # Si no se encuentra la columna, crear una columna vacía
+                df_descarga[col_destino] = ''
     
     # Escribir el archivo sin formato
     with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:

@@ -274,10 +274,14 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 # Mostrar vista previa y botón de descarga en un expander
                 with st.expander(f"📊 {grupo['nombre']} ({len(df_filtrado)} registros)", expanded=True):
                     # Vista previa de los datos
-                    st.dataframe(
-                        df_filtrado[list(grupo['columnas_salida'].values())].head(),
-                        use_container_width=True
-                    )
+                    columnas_disponibles = [col for col in grupo['columnas_salida'].values() if col in df_filtrado.columns]
+                    if columnas_disponibles:
+                        st.dataframe(
+                            df_filtrado[columnas_disponibles].head(),
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("⚠️ No se encontraron las columnas esperadas en los datos")
                     
                     # Botón de descarga
                     st.download_button(
