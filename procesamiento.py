@@ -170,6 +170,12 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
         if 'Resolución' in df_procesado.columns:
             df_procesado['Resolución'] = df_procesado['Resolución'].apply(lambda x: str(x).strip() if pd.notna(x) else '')
     
+    # Asegurar que todas las columnas estándar existan
+    columnas_requeridas = ['Nombre', 'Email', 'Tel', 'Programa', 'Resolución']
+    for col in columnas_requeridas:
+        if col not in df_procesado.columns:
+            df_procesado[col] = ''
+    
     return df_procesado
 
 def cargar_archivo(archivo, cliente_id: str) -> pd.DataFrame:
@@ -197,14 +203,21 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     """Genera un archivo Excel para descarga sin formato."""
     output = io.BytesIO()
     
+    # Imprimir información de debug
+    print("Columnas en el DataFrame:", df.columns.tolist())
+    print("Columnas solicitadas:", columnas_salida)
+    
     # Crear DataFrame de salida con las columnas solicitadas
     df_salida = pd.DataFrame()
     
     # Copiar las columnas solicitadas
     for col_origen, col_destino in columnas_salida.items():
+        print(f"Procesando columna: {col_origen} -> {col_destino}")
         if col_origen in df.columns:
-            df_salida[col_destino] = df[col_origen]
+            df_salida[col_destino] = df[col_origen].copy()
+            print(f"Columna {col_origen} encontrada y copiada")
         else:
+            print(f"Columna {col_origen} no encontrada, usando valor vacío")
             df_salida[col_destino] = ''
     
     # Escribir el archivo sin formato
