@@ -169,15 +169,24 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
     
     # Mapeo de columnas según el cliente
     mapeo_columnas = {
-        'Email': ['Email', 'e-Mail', 'Correo', 'email', 'e-mail'],
-        'Tel': ['Tel', 'Teléfono', 'Móvil', 'Celular', 'tel', 'telefono'],
-        'Programa': ['Programa', 'Carrera de Interes', 'Carrera', 'programa', 'carrera']
+        'Nombre': ['Nombre', 'nombre'],
+        'Apellido': ['Apellido', 'apellido'],
+        'Email': ['Email', 'e-Mail', 'Correo', 'email', 'e-mail', 'E-mail'],
+        'Tel': ['Tel', 'Teléfono', 'Móvil', 'Celular', 'tel', 'telefono', 'Telefono'],
+        'Programa': ['Programa', 'Carrera de Interes', 'Carrera', 'programa', 'carrera'],
+        'Resolución': ['Resolución', 'Ultima Resolución', 'resolucion', 'ultima resolucion']
     }
+    
+    # Imprimir columnas disponibles para debug
+    print("Columnas en el DataFrame:", df.columns.tolist())
+    print("Columnas solicitadas:", columnas_salida)
     
     # Copiar datos de las columnas existentes
     for col_origen, col_destino in columnas_salida.items():
         # Buscar la columna en el DataFrame
         columna_encontrada = None
+        
+        # Primero buscar coincidencia exacta
         if col_origen in df.columns:
             columna_encontrada = col_origen
         else:
@@ -187,12 +196,21 @@ def generar_archivo_descarga(df: pd.DataFrame, columnas_salida: dict, cliente_id
                     if col_alt in df.columns:
                         columna_encontrada = col_alt
                         break
+            # Si no se encuentra, buscar por nombre similar
+            if not columna_encontrada:
+                for col in df.columns:
+                    if col.lower().replace(" ", "") == col_origen.lower().replace(" ", ""):
+                        columna_encontrada = col
+                        break
+        
+        print(f"Buscando columna {col_origen} -> encontrada: {columna_encontrada}")
         
         if columna_encontrada:
             df_descarga[col_destino] = df[columna_encontrada]
         else:
             # Si no se encuentra la columna, crear una columna vacía
             df_descarga[col_destino] = ''
+            print(f"No se encontró la columna {col_origen}")
     
     # Escribir el archivo sin formato
     with pd.ExcelWriter(output, engine='openpyxl', mode='w') as writer:
