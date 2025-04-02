@@ -231,42 +231,37 @@ if uploaded_files and st.button("🚀 **Ejecutar Segmentación**", type="primary
                 else:
                     df_filtrado = df_unificado.copy()
                 
-                # Aplicar filtro de resoluciones si está activado
-                if grupo['filtro_resolucion'] and grupo['resoluciones']:
+                # Filtrar por resolución si está activo
+                if grupo['filtro_resolucion'] and grupo['resoluciones'] is not None:
                     if isinstance(grupo['resoluciones'], dict):
                         # Para UNAB Nurturing
                         dia_actual = fecha_referencia.strftime('%A')
                         resoluciones_dia = grupo['resoluciones'].get(dia_actual, [])
-                        if resoluciones_dia:
-                            df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(resoluciones_dia)]
+                        df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(resoluciones_dia)]
                     else:
                         # Para otros grupos
                         df_filtrado = df_filtrado[df_filtrado['Resolución'].isin(grupo['resoluciones'])]
                 
+                # Si no hay registros después del filtrado, mostrar mensaje
+                if len(df_filtrado) == 0:
+                    st.warning("📭 No se generaron resultados. Ajusta tus criterios de filtrado.")
+                    continue
+                
                 # Generar archivo de descarga
-                if not df_filtrado.empty:
-                    # Formato especial para UNAB Nurturing
-                    if isinstance(grupo['resoluciones'], dict):
-                        nombre_archivo = f"UNAB Nurturing - {dia_actual} - {fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
-                    else:
-                        # Formato estándar para otros clientes
-                        nombre_archivo = f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx"
-                    
-                    # Generar archivo sin formato
-                    archivo_bytes = generar_archivo_descarga(
-                        df_filtrado,
-                        grupo['columnas_salida'],
-                        cliente_seleccionado
-                    )
-                    
-                    # Botón de descarga
-                    st.download_button(
-                        label=f"📥 Descargar {grupo['nombre']}",
-                        data=archivo_bytes,
-                        file_name=nombre_archivo,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"download_{i}"
-                    )
+                archivo_bytes = generar_archivo_descarga(
+                    df_filtrado,
+                    grupo['columnas_salida'],
+                    cliente_seleccionado
+                )
+                
+                # Botón de descarga
+                st.download_button(
+                    label=f"📥 Descargar {grupo['nombre']}",
+                    data=archivo_bytes,
+                    file_name=f"{cliente_seleccionado}_{grupo['nombre']}_{fecha_referencia.strftime('%d-%m-%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"download_{i}"
+                )
                 
                 progress_bar.progress(40 + int(50 * (i+1)/len(grupos_activos)))
             

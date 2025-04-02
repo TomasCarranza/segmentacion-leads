@@ -131,7 +131,11 @@ def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFra
     # Asegurar que la columna de resolución exista y esté limpia
     col_resolucion = 'Ultima Resolución' if cliente_id in ['ULINEA', 'ANAHUAC'] else 'Resolución'
     if col_resolucion in df.columns:
-        df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+        # Para CREXE, mantener el texto completo de la resolución
+        if cliente_id == 'CREXE':
+            df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+        else:
+            df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
     
     return df
 
