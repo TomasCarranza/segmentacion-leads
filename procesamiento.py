@@ -114,18 +114,25 @@ def procesar_unab(df: pd.DataFrame) -> pd.DataFrame:
     
     # Limpiar y estandarizar resoluciones
     if 'Resolución' in df.columns:
-        df['Resolución'] = df['Resolución'].apply(limpiar_resolucion)
+        df['Resolución'] = df['Resolución'].apply(lambda x: str(x).strip() if pd.notna(x) else '')
     
     return df
 
 def procesar_cliente_especifico(df: pd.DataFrame, cliente_id: str) -> pd.DataFrame:
     """Procesa el DataFrame según el cliente específico."""
+    # Primero procesar según el cliente
     if cliente_id in ['ULINEA', 'ANAHUAC']:
-        return procesar_ulinea_anahuac(df)
+        df = procesar_ulinea_anahuac(df)
     elif cliente_id == 'PK_CBA':
-        return procesar_pk_cba(df)
+        df = procesar_pk_cba(df)
     elif cliente_id == 'UNAB':
-        return procesar_unab(df)
+        df = procesar_unab(df)
+    
+    # Asegurar que la columna de resolución exista y esté limpia
+    col_resolucion = 'Ultima Resolución' if cliente_id in ['ULINEA', 'ANAHUAC'] else 'Resolución'
+    if col_resolucion in df.columns:
+        df[col_resolucion] = df[col_resolucion].apply(lambda x: str(x).strip() if pd.notna(x) else '')
+    
     return df
 
 def cargar_archivo(archivo, cliente_id: str) -> pd.DataFrame:
